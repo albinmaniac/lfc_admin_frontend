@@ -1,0 +1,101 @@
+// ROUTES + PERMISSIONS + ROLES + sidebar navigation — all in one file.
+
+// ---------------------------------------------------------------------------
+// ROUTES
+// ---------------------------------------------------------------------------
+export const ROUTES = {
+  LOGIN: '/login',
+  ACCEPT_INVITATION: '/setup-password/:token',
+  DASHBOARD: '/dashboard',
+
+  MASS_TIMINGS: '/mass-timings',
+  FAMILY_UNITS: '/family-units',
+  FAMILIES: '/families',
+  FAMILY_MEMBERS: '/family-members',
+  PARISH_GROUPS: '/parish-groups',
+
+  NOTICES: '/notices',
+  EVENTS: '/events',
+  GALLERY: '/gallery',
+
+  REPORTS: '/reports',
+  SECURITY: '/security',
+
+  STAFF_MANAGEMENT: '/staff-management',
+  INVITATIONS: '/invitations',
+  PERMISSION_MANAGEMENT: '/permission-management',
+  CHURCH_SETTINGS: '/church-settings',
+};
+
+// ---------------------------------------------------------------------------
+// ROLES
+// ---------------------------------------------------------------------------
+export const ROLES = {
+  SUPERADMIN: 'SUPERADMIN',
+  STAFF: 'STAFF',
+  GROUP_LEADER: 'GROUP_LEADER',
+  FAMILY_UNIT_PRESIDENT: 'FAMILY_UNIT_PRESIDENT',
+};
+
+// ---------------------------------------------------------------------------
+// PERMISSIONS — mirrors UserPermission.PermissionChoices exactly (parish app)
+// ---------------------------------------------------------------------------
+export const PERMISSIONS = {
+  VIEW_DASHBOARD: 'VIEW_DASHBOARD',
+  MANAGE_PARISH: 'MANAGE_PARISH',
+  MANAGE_SETTINGS: 'MANAGE_SETTINGS',
+  MANAGE_FAMILY_UNITS: 'MANAGE_FAMILY_UNITS',
+  MANAGE_FAMILIES: 'MANAGE_FAMILIES',
+  MANAGE_FAMILY_MEMBERS: 'MANAGE_FAMILY_MEMBERS',
+  MANAGE_GROUPS: 'MANAGE_GROUPS',
+  MANAGE_EVENTS: 'MANAGE_EVENTS',
+  MANAGE_NOTICES: 'MANAGE_NOTICES',
+  MANAGE_GALLERY: 'MANAGE_GALLERY',
+  MANAGE_SECURITY: 'MANAGE_SECURITY',
+  MANAGE_PERMISSIONS: 'MANAGE_PERMISSIONS',
+  VIEW_REPORTS: 'VIEW_REPORTS',
+};
+
+// ---------------------------------------------------------------------------
+// SIDEBAR NAVIGATION — Layout.jsx maps over this. permission/role gate each
+// item; SUPERADMIN bypass is handled centrally in auth.jsx, not here.
+// Staff Management / Invitations have no matching PermissionChoices entry
+// on the backend, so they stay role-gated to SUPERADMIN only.
+// ---------------------------------------------------------------------------
+export const NAVIGATION = [
+  {
+    label: 'Overview',
+    items: [
+      { label: 'Dashboard', path: ROUTES.DASHBOARD, permission: PERMISSIONS.VIEW_DASHBOARD },
+    ],
+  },
+  {
+    label: 'Operations',
+    items: [
+      { label: 'Mass Timings', path: ROUTES.MASS_TIMINGS, permission: PERMISSIONS.MANAGE_PARISH },
+      { label: 'Notices', path: ROUTES.NOTICES, permission: PERMISSIONS.MANAGE_NOTICES },
+      { label: 'Events', path: ROUTES.EVENTS, permission: PERMISSIONS.MANAGE_EVENTS },
+      { label: 'Gallery', path: ROUTES.GALLERY, permission: PERMISSIONS.MANAGE_GALLERY },
+    ],
+  },
+  {
+    label: 'Directory',
+    items: [
+      { label: 'Family Units', path: ROUTES.FAMILY_UNITS, permission: PERMISSIONS.MANAGE_FAMILY_UNITS },
+      { label: 'Families', path: ROUTES.FAMILIES, permission: PERMISSIONS.MANAGE_FAMILIES },
+      { label: 'Family Members', path: ROUTES.FAMILY_MEMBERS, permission: PERMISSIONS.MANAGE_FAMILY_MEMBERS },
+      { label: 'Parish Groups', path: ROUTES.PARISH_GROUPS, permission: PERMISSIONS.MANAGE_GROUPS },
+    ],
+  },
+  {
+    label: 'Administration',
+    items: [
+      { label: 'Reports', path: ROUTES.REPORTS, permission: PERMISSIONS.VIEW_REPORTS },
+      { label: 'Security', path: ROUTES.SECURITY, role: ROLES.SUPERADMIN },
+      { label: 'Staff Management', path: ROUTES.STAFF_MANAGEMENT, role: ROLES.SUPERADMIN },
+      { label: 'Invitations', path: ROUTES.INVITATIONS, role: ROLES.SUPERADMIN },
+      { label: 'Permissions', path: ROUTES.PERMISSION_MANAGEMENT, role: ROLES.SUPERADMIN },
+      { label: 'Settings', path: ROUTES.CHURCH_SETTINGS, role: ROLES.SUPERADMIN },
+    ],
+  },
+];
