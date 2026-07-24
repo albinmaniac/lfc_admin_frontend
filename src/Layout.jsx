@@ -77,7 +77,7 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
         />
       )}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-40 flex flex-col bg-white border-r border-gray-200 transition-all duration-200 ${
+        className={`fixed lg:static inset-y-0 left-0 z-40 flex flex-col bg-green border-r border-gray-200 transition-all duration-200 ${
           collapsed ? 'w-16' : 'w-64'
         } ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
