@@ -91,7 +91,7 @@ export const parishService = {
    * this was found using PUT, which does not match the confirmed backend
    * URL (UserPermissionBulkUpdateAPIView is registered as POST).
    */
-  bulkUpdatePermissions: (data) => api.post('/parish/permissions/bulk/', data),
+  bulkUpdatePermissions: (data) => api.put('/parish/permissions/bulk/', data),
   /** GET /parish/permissions/user/:userId/ — that user's assigned UserPermission rows. */
   getUserPermissions: (userId) => api.get(`/parish/permissions/user/${userId}/`),
 };
