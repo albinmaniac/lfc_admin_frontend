@@ -1,5 +1,21 @@
 import { forwardRef } from 'react';
 import { Loader2 } from 'lucide-react';
+// Shared date/time formatting — use this instead of new Date(x).toLocaleString()
+// scattered across pages, so date display stays consistent app-wide.
+export function formatDateTime(isoString) {
+  if (!isoString) return '—';
+  return new Date(isoString).toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+}
+
+export function formatDate(isoString) {
+  if (!isoString) return '—';
+  return new Date(isoString).toLocaleDateString(undefined, {
+    dateStyle: 'medium',
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Button
