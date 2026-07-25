@@ -1,5 +1,20 @@
 // ROUTES + PERMISSIONS + ROLES + sidebar navigation — all in one file.
 
+import {
+  Home,
+  Clock3,
+  Bell,
+  CalendarDays,
+  Images,
+  Users,
+  Building2,
+  BarChart3,
+  Shield,
+  UserCog,
+  MailPlus,
+  Settings,
+} from 'lucide-react';
+
 // ---------------------------------------------------------------------------
 // ROUTES
 // ---------------------------------------------------------------------------

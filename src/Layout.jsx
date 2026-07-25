@@ -23,10 +23,13 @@ function NavItem({ item, collapsed, onNavigate }) {
   const allowed = usePermission(item.permission) && useHasRole(item.role);
   if (!allowed) return null;
 
+  const Icon = item.icon;
+
   return (
     <NavLink
       to={item.path}
       onClick={onNavigate}
+      title={item.label}
       className={({ isActive }) =>
         `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all border-l-2 ${
           isActive
@@ -35,6 +38,7 @@ function NavItem({ item, collapsed, onNavigate }) {
         } ${collapsed ? 'justify-center px-2' : ''}`
       }
     >
+      {Icon ? <Icon className="h-4 w-4 shrink-0" /> : <span className="h-4 w-4 shrink-0" />}
       {!collapsed && <span>{item.label}</span>}
     </NavLink>
   );
