@@ -31,14 +31,14 @@ function NavItem({ item, collapsed, onNavigate }) {
       onClick={onNavigate}
       title={item.label}
       className={({ isActive }) =>
-        `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all border-l-2 ${
+        `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all border-l-2 ${
           isActive
-            ? 'bg-white/15 text-white border-cyan-300 shadow-sm'
-            : 'text-indigo-100/90 hover:bg-white/10 hover:text-white border-transparent'
-        } ${collapsed ? 'justify-center px-2' : ''}`
+            ? 'bg-cyan-400/20 text-white border-cyan-300 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]'
+            : 'text-indigo-100/90 hover:bg-white/12 hover:text-white border-transparent'
+        } ${collapsed ? 'justify-center px-2.5 rounded-full h-11 w-11 p-0' : ''}`
       }
     >
-      {Icon ? <Icon className="h-4 w-4 shrink-0" /> : <span className="h-4 w-4 shrink-0" />}
+      {Icon ? <Icon className="h-5 w-5 shrink-0" /> : <span className="h-5 w-5 shrink-0" />}
       {!collapsed && <span>{item.label}</span>}
     </NavLink>
   );

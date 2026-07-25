@@ -81,36 +81,36 @@ export const NAVIGATION = [
   {
     label: 'Overview',
     items: [
-      { label: 'Dashboard', path: ROUTES.DASHBOARD, permission: PERMISSIONS.VIEW_DASHBOARD },
+      { label: 'Dashboard', path: ROUTES.DASHBOARD, permission: PERMISSIONS.VIEW_DASHBOARD, icon: Home },
     ],
   },
   {
     label: 'Operations',
     items: [
-      { label: 'Mass Timings', path: ROUTES.MASS_TIMINGS, permission: PERMISSIONS.MANAGE_PARISH },
-      { label: 'Notices', path: ROUTES.NOTICES, permission: PERMISSIONS.MANAGE_NOTICES },
-      { label: 'Events', path: ROUTES.EVENTS, permission: PERMISSIONS.MANAGE_EVENTS },
-      { label: 'Gallery', path: ROUTES.GALLERY, permission: PERMISSIONS.MANAGE_GALLERY },
+      { label: 'Mass Timings', path: ROUTES.MASS_TIMINGS, permission: PERMISSIONS.MANAGE_PARISH, icon: Clock3 },
+      { label: 'Notices', path: ROUTES.NOTICES, permission: PERMISSIONS.MANAGE_NOTICES, icon: Bell },
+      { label: 'Events', path: ROUTES.EVENTS, permission: PERMISSIONS.MANAGE_EVENTS, icon: CalendarDays },
+      { label: 'Gallery', path: ROUTES.GALLERY, permission: PERMISSIONS.MANAGE_GALLERY, icon: Images },
     ],
   },
   {
     label: 'Directory',
     items: [
-      { label: 'Family Units', path: ROUTES.FAMILY_UNITS, permission: PERMISSIONS.MANAGE_FAMILY_UNITS },
-      { label: 'Families', path: ROUTES.FAMILIES, permission: PERMISSIONS.MANAGE_FAMILIES },
-      { label: 'Family Members', path: ROUTES.FAMILY_MEMBERS, permission: PERMISSIONS.MANAGE_FAMILY_MEMBERS },
-      { label: 'Parish Groups', path: ROUTES.PARISH_GROUPS, permission: PERMISSIONS.MANAGE_GROUPS },
+      { label: 'Family Units', path: ROUTES.FAMILY_UNITS, permission: PERMISSIONS.MANAGE_FAMILY_UNITS, icon: Building2 },
+      { label: 'Families', path: ROUTES.FAMILIES, permission: PERMISSIONS.MANAGE_FAMILIES, icon: Users },
+      { label: 'Family Members', path: ROUTES.FAMILY_MEMBERS, permission: PERMISSIONS.MANAGE_FAMILY_MEMBERS, icon: Users },
+      { label: 'Parish Groups', path: ROUTES.PARISH_GROUPS, permission: PERMISSIONS.MANAGE_GROUPS, icon: Users },
     ],
   },
   {
     label: 'Administration',
     items: [
-      { label: 'Reports', path: ROUTES.REPORTS, permission: PERMISSIONS.VIEW_REPORTS },
-      { label: 'Security', path: ROUTES.SECURITY, role: ROLES.SUPERADMIN },
-      { label: 'Staff Management', path: ROUTES.STAFF_MANAGEMENT, role: ROLES.SUPERADMIN },
-      { label: 'Invitations', path: ROUTES.INVITATIONS, role: ROLES.SUPERADMIN },
-      { label: 'Permissions', path: ROUTES.PERMISSION_MANAGEMENT, role: ROLES.SUPERADMIN },
-      { label: 'Settings', path: ROUTES.CHURCH_SETTINGS, role: ROLES.SUPERADMIN },
+      { label: 'Reports', path: ROUTES.REPORTS, permission: PERMISSIONS.VIEW_REPORTS, icon: BarChart3 },
+      { label: 'Security', path: ROUTES.SECURITY, role: ROLES.SUPERADMIN, icon: Shield },
+      { label: 'Staff Management', path: ROUTES.STAFF_MANAGEMENT, role: ROLES.SUPERADMIN, icon: UserCog },
+      { label: 'Invitations', path: ROUTES.INVITATIONS, role: ROLES.SUPERADMIN, icon: MailPlus },
+      { label: 'Permissions', path: ROUTES.PERMISSION_MANAGEMENT, role: ROLES.SUPERADMIN, icon: Shield },
+      { label: 'Settings', path: ROUTES.CHURCH_SETTINGS, role: ROLES.SUPERADMIN, icon: Settings },
     ],
   },
 ];
