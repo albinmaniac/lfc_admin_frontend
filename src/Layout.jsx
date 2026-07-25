@@ -28,10 +28,10 @@ function NavItem({ item, collapsed, onNavigate }) {
       to={item.path}
       onClick={onNavigate}
       className={({ isActive }) =>
-        `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors border-l-2 ${
+        `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all border-l-2 ${
           isActive
-            ? 'bg-primary-50 text-primary-700 border-primary-600'
-            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 border-transparent'
+            ? 'bg-white/15 text-white border-cyan-300 shadow-sm'
+            : 'text-indigo-100/90 hover:bg-white/10 hover:text-white border-transparent'
         } ${collapsed ? 'justify-center px-2' : ''}`
       }
     >
@@ -54,7 +54,7 @@ function NavGroup({ group, collapsed, onNavigate }) {
   return (
     <div className="mb-1">
       {!collapsed && (
-        <p className="px-3 pt-4 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+        <p className="px-3 pt-4 pb-1 text-xs font-semibold uppercase tracking-wide text-indigo-200/80">
           {group.label}
         </p>
       )}
@@ -77,22 +77,27 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
         />
       )}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-40 flex flex-col bg-white border-r border-gray-200 transition-all duration-200 ${
+        className={`fixed lg:static inset-y-0 left-0 z-40 flex flex-col bg-gradient-to-br from-slate-900 via-indigo-950 to-teal-900 text-white shadow-2xl border-r border-white/10 transition-all duration-200 ${
           collapsed ? 'w-16' : 'w-64'
         } ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
-        <div className="h-14 flex items-center justify-between px-4 border-b border-gray-100 shrink-0">
-          {!collapsed && <span className="font-semibold text-gray-900 tracking-tight">LFC Church</span>}
+        <div className="h-14 flex items-center justify-between px-4 border-b border-white/10 shrink-0">
+          {!collapsed && (
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-2.5 w-2.5 rounded-full bg-cyan-400" />
+              <span className="font-semibold tracking-tight text-white">LFC Church</span>
+            </div>
+          )}
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="hidden lg:flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100"
+            className="hidden lg:flex h-7 w-7 items-center justify-center rounded-md text-indigo-100/80 hover:bg-white/10 hover:text-white"
             aria-label="Toggle sidebar"
           >
             <ChevronLeft className={`h-4 w-4 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
           </button>
           <button
             onClick={() => setMobileOpen(false)}
-            className="lg:hidden h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100"
+            className="lg:hidden h-7 w-7 flex items-center justify-center rounded-md text-indigo-100/80 hover:bg-white/10 hover:text-white"
             aria-label="Close sidebar"
           >
             <X className="h-4 w-4" />
