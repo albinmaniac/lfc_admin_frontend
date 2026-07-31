@@ -89,7 +89,16 @@ export default function Calendar() {
 
   const detailEntries = useMemo(() => {
     if (!detailData) return [];
-    return Object.entries(detailData).filter(([, value]) => value !== null && value !== undefined && value !== '');
+    const hiddenFields = new Set([
+      'cover_image',
+      'cover_image_url',
+      'image',
+      'image_url',
+    ]);
+    return Object.entries(detailData).filter(([key, value]) => {
+      if (hiddenFields.has(key)) return false;
+      return value !== null && value !== undefined && value !== '';
+    });
   }, [detailData]);
 
   const calendarCells = useMemo(() => {
