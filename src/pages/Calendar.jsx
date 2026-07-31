@@ -302,10 +302,8 @@ export default function Calendar() {
                           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-muted">{key}</p>
                           <p className="mt-1 break-words text-sm text-ink">
                             {typeof value === 'boolean'
-                              ? value ? 'Yes' : 'No'
-                              : typeof value === 'object'
-                                ? JSON.stringify(value, null, 2)
-                                : String(value)}
+                              ? (value ? 'Yes' : 'No')
+                              : String(value)}
                           </p>
                         </div>
                       ))}
