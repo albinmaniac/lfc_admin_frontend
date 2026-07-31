@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, X, UserCog, Power } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, UserCog, Power, Mail, Phone } from 'lucide-react';
 import { administrationService } from '../services.js';
-import { PageHeader, DataTable, Badge, Button, Input, SummaryCard } from '../components.jsx';
+import { PageHeader, Badge, Button, Input, SummaryCard } from '../components.jsx';
 
 const ACCOUNT_STATUS_BADGE = {
   PENDING: 'warning',
@@ -11,6 +11,8 @@ const ACCOUNT_STATUS_BADGE = {
   EXPIRED: 'danger',
   NOT_INVITED: 'gray',
 };
+
+const OPTIONAL_FIELDS = ['email', 'phone_number', 'bio', 'start_date', 'end_date', 'status'];
 
 const EMPTY_FORM = {
   name: '', email: '', phone_number: '', designation: '', bio: '',
@@ -161,11 +163,13 @@ export default function StaffManagement() {
     try {
       const formData = new FormData();
       Object.entries(form).forEach(([key, value]) => {
-        if (value === '') return;
-        // Trim the email specifically before it goes over the wire —
-        // stray leading/trailing whitespace from copy-paste is a common
-        // source of "duplicate email" false negatives on the backend.
-        const finalValue = key === 'email' ? String(value).trim() : value;
+        const finalValue = key === 'email' ? String(value ?? '').trim() : value;
+
+        if (OPTIONAL_FIELDS.includes(key)) {
+          formData.append(key, finalValue ?? '');
+          return;
+        }
+        if (finalValue === '') return;
         formData.append(key, finalValue);
       });
       if (photoFile) formData.append('photo', photoFile);
@@ -188,42 +192,16 @@ export default function StaffManagement() {
 
   const activeCountOnPage = staff.filter((s) => s.is_active).length;
 
-  const columns = [
-    {
-      key: 'name',
-      header: 'Staff Member',
-      render: (row) => (
-        <div className="flex items-center gap-2.5">
-          {row.photo_url ? (
-            <img src={row.photo_url} alt={row.name} className="h-8 w-8 rounded-full object-cover" />
-          ) : (
-            <div className="h-8 w-8 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-semibold">
-              {row.name?.charAt(0)?.toUpperCase()}
-            </div>
-          )}
-          <div>
-            <p className="font-medium text-gray-900">{row.name}</p>
-            <p className="text-xs text-gray-400">{row.designation}</p>
-          </div>
-        </div>
-      ),
-    },
-    { key: 'email', header: 'Email', render: (row) => row.email || '—' },
-    { key: 'phone_number', header: 'Phone', render: (row) => row.phone_number || '—' },
-    {
-      key: 'account_status',
-      header: 'Portal Access',
-      render: (row) => <Badge variant={ACCOUNT_STATUS_BADGE[row.account_status] || 'gray'}>{row.account_status?.replace(/_/g, ' ')}</Badge>,
-    },
-    {
-      key: 'is_active',
-      header: 'Status',
-      render: (row) => <Badge variant={row.is_active ? 'success' : 'gray'}>{row.is_active ? 'Active' : 'Inactive'}</Badge>,
-    },
-  ];
-
   return (
     <div>
+      <style>{`
+        @keyframes staffFadeIn {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .staff-fade-in { animation: staffFadeIn 0.35s ease-out both; }
+      `}</style>
+
       <PageHeader
         title="Staff Management"
         description="Manage church staff profiles, roles, and portal access."
@@ -245,93 +223,143 @@ export default function StaffManagement() {
         />
       </div>
 
-      <DataTable
-        columns={columns}
-        data={staff}
-        loading={loading}
-        emptyTitle="No staff members yet"
-        emptyDescription="Add your first staff member to get started."
-        rowActions={(row) => (
-          <div className="flex items-center justify-end gap-1">
-            <button
-              onClick={() => handleToggleStatus(row)}
-              className={`h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-100 ${row.is_active ? 'text-gray-400 hover:text-danger-600' : 'text-gray-400 hover:text-success-600'}`}
-              aria-label={row.is_active ? 'Deactivate' : 'Reactivate'}
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-56 bg-surface-2 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      ) : staff.length === 0 ? (
+        <div className="bg-surface border border-border rounded-2xl py-16 text-center">
+          <h3 className="text-sm font-semibold text-ink">No staff members yet</h3>
+          <p className="text-sm text-ink-muted mt-1">Add your first staff member to get started.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {staff.map((row, i) => (
+            <div
+              key={row.id}
+              className="staff-fade-in bg-surface border border-border rounded-2xl p-4 hover:border-accent-strong/50 transition-colors flex flex-col"
+              style={{ animationDelay: `${i * 40}ms` }}
             >
-              <Power className="h-4 w-4" />
-            </button>
-            <button onClick={() => openEditModal(row)} className="h-8 w-8 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600" aria-label="Edit">
-              <Pencil className="h-4 w-4" />
-            </button>
-            <button onClick={() => handleDelete(row)} className="h-8 w-8 flex items-center justify-center rounded-md text-gray-400 hover:bg-danger-50 hover:text-danger-600" aria-label="Delete">
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-      />
+              <div className="flex items-start justify-between gap-2 mb-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  {row.photo_url ? (
+                    <img src={row.photo_url} alt={row.name} className="h-14 w-14 rounded-2xl object-cover shrink-0" />
+                  ) : (
+                    <div className="h-14 w-14 rounded-2xl bg-accent text-accent-ink flex items-center justify-center text-lg font-semibold shrink-0">
+                      {row.name?.charAt(0)?.toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="font-semibold text-ink truncate">{row.name}</p>
+                    <p className="text-xs text-ink-muted truncate">{row.designation}</p>
+                    <Badge variant={row.is_active ? 'success' : 'gray'} className="mt-1">{row.is_active ? 'Active' : 'Inactive'}</Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1 mb-3 text-xs text-ink-muted">
+                {row.email && (
+                  <p className="flex items-center gap-1.5 truncate">
+                    <Mail className="h-3.5 w-3.5 text-ink-muted shrink-0" /> <span className="truncate">{row.email}</span>
+                  </p>
+                )}
+                {row.phone_number && (
+                  <p className="flex items-center gap-1.5">
+                    <Phone className="h-3.5 w-3.5 text-ink-muted" /> {row.phone_number}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex-1" />
+
+              <div className="flex items-center justify-between pt-3 border-t border-border">
+                <Badge variant={ACCOUNT_STATUS_BADGE[row.account_status] || 'gray'}>{row.account_status?.replace(/_/g, ' ')}</Badge>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => handleToggleStatus(row)}
+                    className={`h-7 w-7 flex items-center justify-center rounded-md hover:bg-surface-2 ${row.is_active ? 'text-ink-muted hover:text-danger-600' : 'text-ink-muted hover:text-success-600'}`}
+                    aria-label={row.is_active ? 'Deactivate' : 'Reactivate'}
+                  >
+                    <Power className="h-3.5 w-3.5" />
+                  </button>
+                  <button onClick={() => openEditModal(row)} className="h-7 w-7 flex items-center justify-center rounded-md text-ink-muted hover:bg-surface-2 hover:text-ink" aria-label="Edit">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <button onClick={() => handleDelete(row)} className="h-7 w-7 flex items-center justify-center rounded-md text-ink-muted hover:bg-danger-50 hover:text-danger-600" aria-label="Delete">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {modalOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 py-8 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-lg my-auto">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h3 className="text-base font-semibold text-gray-900">{editingId ? 'Edit Staff Member' : 'Add Staff Member'}</h3>
-              <button onClick={() => setModalOpen(false)} className="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100">
+          <div className="bg-surface border border-border rounded-2xl shadow-lg w-full max-w-lg my-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h3 className="text-base font-semibold text-ink">{editingId ? 'Edit Staff Member' : 'Add Staff Member'}</h3>
+              <button onClick={() => setModalOpen(false)} className="h-7 w-7 flex items-center justify-center rounded-md text-ink-muted hover:bg-surface-2">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <form onSubmit={handleSave} className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Name</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Name</label>
                 <Input type="text" name="name" required value={form.name} onChange={handleFormChange} />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Designation</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Designation</label>
                 <Input type="text" name="designation" required value={form.designation} onChange={handleFormChange} placeholder="e.g. Parish Priest" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                  <label className="block text-sm font-medium text-ink mb-1.5">Email</label>
                   <Input type="email" name="email" value={form.email} onChange={handleFormChange} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone</label>
+                  <label className="block text-sm font-medium text-ink mb-1.5">Phone</label>
                   <Input type="text" name="phone_number" value={form.phone_number} onChange={handleFormChange} />
                 </div>
               </div>
 
               <div className="flex gap-6">
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input type="checkbox" name="show_email_publicly" checked={form.show_email_publicly} onChange={handleFormChange} className="rounded border-gray-300" />
+                <label className="flex items-center gap-2 text-sm text-ink">
+                  <input type="checkbox" name="show_email_publicly" checked={form.show_email_publicly} onChange={handleFormChange} className="rounded border-border accent-accent-strong" />
                   Show email publicly
                 </label>
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input type="checkbox" name="show_phone_publicly" checked={form.show_phone_publicly} onChange={handleFormChange} className="rounded border-gray-300" />
+                <label className="flex items-center gap-2 text-sm text-ink">
+                  <input type="checkbox" name="show_phone_publicly" checked={form.show_phone_publicly} onChange={handleFormChange} className="rounded border-border accent-accent-strong" />
                   Show phone publicly
                 </label>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Bio</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Bio</label>
                 <textarea
                   name="bio"
                   value={form.bio}
                   onChange={handleFormChange}
                   rows={3}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
+                  className="w-full rounded-xl border border-border bg-surface text-ink px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-strong"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Start Date</label>
+                  <label className="block text-sm font-medium text-ink mb-1.5">Start Date</label>
                   <Input type="date" name="start_date" value={form.start_date} onChange={handleFormChange} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    End Date <span className="text-gray-400">(optional)</span>
+                  <label className="block text-sm font-medium text-ink mb-1.5">
+                    End Date <span className="text-ink-muted">(optional)</span>
                   </label>
                   <Input
                     type="date"
@@ -344,23 +372,23 @@ export default function StaffManagement() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Status <span className="text-gray-400">(exact backend choices still unconfirmed — free text for now; will become a dropdown once Staff.status choices are shared)</span>
+                <label className="block text-sm font-medium text-ink mb-1.5">
+                  Status <span className="text-ink-muted">(exact backend choices still unconfirmed — free text for now; will become a dropdown once Staff.status choices are shared)</span>
                 </label>
                 <Input type="text" name="status" value={form.status} onChange={handleFormChange} placeholder="e.g. ACTIVE" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Photo <span className="text-gray-400">(optional, JPEG/PNG/WEBP/GIF, max {MAX_PHOTO_SIZE_MB}MB)</span>
+                <label className="block text-sm font-medium text-ink mb-1.5">
+                  Photo <span className="text-ink-muted">(optional, JPEG/PNG/WEBP/GIF, max {MAX_PHOTO_SIZE_MB}MB)</span>
                 </label>
                 {editingPhotoUrl && !photoFile && (
                   <div className="flex items-center gap-2 mb-2">
                     <img src={editingPhotoUrl} alt="Current" className="h-12 w-12 rounded-full object-cover" />
-                    <span className="text-xs text-gray-500">Current photo — choose a file below to replace it</span>
+                    <span className="text-xs text-ink-muted">Current photo — choose a file below to replace it</span>
                   </div>
                 )}
-                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handlePhotoChange} className="text-sm" />
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handlePhotoChange} className="text-sm text-ink" />
               </div>
 
               <div className="flex gap-2 pt-2">

@@ -22,14 +22,8 @@ const PERMISSION_LABELS = {
   VIEW_REPORTS: 'View Reports',
 };
 
-// Verified against UserPermission.PermissionChoices — all 13 real values,
-// nothing extra, nothing missing.
 const ALL_PERMISSIONS = Object.values(PERMISSIONS);
 
-// Shown but locked (grey + lock icon), not hidden — this is deliberate:
-// hiding them would make the "13 Permission Types" summary count
-// mysteriously not match what's shown in the checklist, and give no
-// indication of *why* a permission is unavailable to assign.
 const SUPERADMIN_ONLY_PERMISSIONS = [
   PERMISSIONS.MANAGE_PERMISSIONS,
   PERMISSIONS.MANAGE_SETTINGS,
@@ -134,8 +128,6 @@ export default function PermissionManagement() {
     );
   };
 
-  // True if the current checklist state differs from what was loaded —
-  // used to disable Save until something has actually changed.
   const hasChanges =
     checkedPermissions.length !== originalPermissions.length ||
     checkedPermissions.some((p) => !originalPermissions.includes(p));
@@ -150,9 +142,6 @@ export default function PermissionManagement() {
         permissions: payload,
       });
       toast.success('Permissions updated');
-      // Reload from the backend rather than trusting the just-submitted
-      // local state — confirms the save actually took and resets the
-      // hasChanges baseline correctly.
       loadUserPermissions();
     } catch (err) {
       toast.error(extractErrorMessage(err));
@@ -172,6 +161,19 @@ export default function PermissionManagement() {
 
   return (
     <div>
+      <style>{`
+        @keyframes rowFadeIn {
+          from { opacity: 0; transform: translateX(-6px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        .row-fade-in { animation: rowFadeIn 0.3s ease-out both; }
+        @keyframes permFadeIn {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .perm-fade-in { animation: permFadeIn 0.3s ease-out both; }
+      `}</style>
+
       <PageHeader
         title="Permission Management"
         description="Assign module-level permissions to staff, group leaders, and family unit presidents."
@@ -184,44 +186,49 @@ export default function PermissionManagement() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-1">
-          <div className="mb-3">
+          <div className="mb-3 relative">
+            {/* Input has no `icon` prop — passing one silently spreads onto
+                the raw DOM element and never renders. Wrapping manually
+                instead. */}
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-muted pointer-events-none" />
             <Input
-              icon={Search}
               type="text"
               placeholder="Search users..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
             />
           </div>
 
-          <div className="bg-white border border-gray-100 rounded-xl overflow-hidden max-h-[560px] overflow-y-auto">
+          <div className="bg-surface border border-border rounded-2xl overflow-hidden max-h-[560px] overflow-y-auto">
             {loadingUsers ? (
               <div className="p-3 space-y-2">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="h-14 bg-gray-100 rounded-lg animate-pulse" />
+                  <div key={i} className="h-14 bg-surface-2 rounded-xl animate-pulse" />
                 ))}
               </div>
             ) : filteredUsers.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-8">No users found.</p>
+              <p className="text-sm text-ink-muted text-center py-8">No users found.</p>
             ) : (
-              filteredUsers.map((u) => {
+              filteredUsers.map((u, i) => {
                 const active = String(u.id) === String(selectedUserId);
                 return (
                   <button
                     key={u.id}
                     onClick={() => setSelectedUserId(u.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-left border-b border-gray-50 last:border-0 transition-colors ${
-                      active ? 'bg-primary-50' : 'hover:bg-gray-50'
+                    style={{ animationDelay: `${i * 30}ms` }}
+                    className={`row-fade-in w-full flex items-center gap-3 px-4 py-3 text-left border-b border-border last:border-0 transition-colors ${
+                      active ? 'bg-accent/25' : 'hover:bg-surface-2'
                     }`}
                   >
-                    <div className="h-9 w-9 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-semibold shrink-0">
+                    <div className="h-9 w-9 rounded-full bg-accent text-accent-ink flex items-center justify-center text-xs font-semibold shrink-0">
                       {u.first_name?.charAt(0)?.toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className={`text-sm font-medium truncate ${active ? 'text-primary-700' : 'text-gray-900'}`}>
+                      <p className={`text-sm font-medium truncate ${active ? 'text-accent-ink' : 'text-ink'}`}>
                         {u.first_name} {u.last_name}
                       </p>
-                      <p className="text-xs text-gray-400 truncate">{u.role.replace(/_/g, ' ')}</p>
+                      <p className="text-xs text-ink-muted truncate">{u.role.replace(/_/g, ' ')}</p>
                     </div>
                   </button>
                 );
@@ -234,15 +241,15 @@ export default function PermissionManagement() {
               <button
                 onClick={() => goToUsersPage(pageInfo.previous)}
                 disabled={!pageInfo.previous || loadingUsers}
-                className="flex items-center gap-1 text-xs text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:text-gray-900"
+                className="flex items-center gap-1 text-xs text-ink-muted disabled:opacity-40 disabled:cursor-not-allowed hover:text-ink"
               >
                 <ChevronLeft className="h-3.5 w-3.5" /> Previous
               </button>
-              <span className="text-xs text-gray-400">{pageInfo.count} total</span>
+              <span className="text-xs text-ink-muted">{pageInfo.count} total</span>
               <button
                 onClick={() => goToUsersPage(pageInfo.next)}
                 disabled={!pageInfo.next || loadingUsers}
-                className="flex items-center gap-1 text-xs text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:text-gray-900"
+                className="flex items-center gap-1 text-xs text-ink-muted disabled:opacity-40 disabled:cursor-not-allowed hover:text-ink"
               >
                 Next <ChevronRight className="h-3.5 w-3.5" />
               </button>
@@ -251,61 +258,65 @@ export default function PermissionManagement() {
         </div>
 
         <div className="lg:col-span-2">
-          <div className="bg-white border border-gray-100 rounded-xl p-5">
+          <div className="bg-surface border border-border rounded-2xl p-5">
             {!selectedUserId ? (
-              <p className="text-sm text-gray-500 py-16 text-center">Select a user from the list to view and manage their permissions.</p>
+              <p className="text-sm text-ink-muted py-16 text-center">Select a user from the list to view and manage their permissions.</p>
             ) : loadingPermissions ? (
               <div className="space-y-2">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-9 bg-gray-100 rounded-lg animate-pulse" />
+                  <div key={i} className="h-9 bg-surface-2 rounded-xl animate-pulse" />
                 ))}
               </div>
             ) : (
               <>
-                <div className="flex items-center gap-3 mb-5 pb-5 border-b border-gray-100">
-                  <div className="h-11 w-11 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-sm font-semibold">
+                <div className="flex items-center gap-3 mb-5 pb-5 border-b border-border">
+                  <div className="h-11 w-11 rounded-full bg-accent text-accent-ink flex items-center justify-center text-sm font-semibold">
                     {selectedUser.first_name?.charAt(0)?.toUpperCase()}
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">{selectedUser.first_name} {selectedUser.last_name}</p>
-                    <p className="text-xs text-gray-500">{selectedUser.email} — {selectedUser.role.replace(/_/g, ' ')}</p>
+                    <p className="text-sm font-semibold text-ink">{selectedUser.first_name} {selectedUser.last_name}</p>
+                    <p className="text-xs text-ink-muted">{selectedUser.email} — {selectedUser.role.replace(/_/g, ' ')}</p>
                   </div>
                 </div>
 
                 {isSuperAdmin && (
-                  <div className="bg-primary-50 border border-primary-100 rounded-lg px-3 py-2.5 text-sm text-primary-700 mb-4">
+                  <div className="bg-accent/25 border border-accent/40 rounded-xl px-3 py-2.5 text-sm text-accent-ink mb-4">
                     SuperAdmin has full access to every module by default. Permissions can't be individually assigned or revoked.
                   </div>
                 )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-5">
-                  {ALL_PERMISSIONS.map((permission) => {
+                  {ALL_PERMISSIONS.map((permission, i) => {
                     const locked = isLocked(permission);
+                    const checked = checkedPermissions.includes(permission);
                     return (
                       <label
                         key={permission}
-                        className={`flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm ${
+                        style={{ animationDelay: `${i * 25}ms` }}
+                        className={`perm-fade-in flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
                           locked
-                            ? 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
-                            : 'border-gray-200 text-gray-700 hover:bg-gray-50 cursor-pointer'
+                            ? 'border-border bg-surface-2 text-ink-muted cursor-not-allowed'
+                            : checked
+                            ? 'border-accent-strong/40 bg-accent/20 text-ink cursor-pointer'
+                            : 'border-border text-ink hover:bg-accent/10 hover:border-accent-strong/30 cursor-pointer'
                         }`}
                       >
                         <input
                           type="checkbox"
-                          checked={checkedPermissions.includes(permission)}
+                          checked={checked}
                           onChange={() => togglePermission(permission)}
                           disabled={locked}
-                          className="rounded border-gray-300"
+                          className="rounded border-border"
                         />
                         <span className="flex-1">{PERMISSION_LABELS[permission]}</span>
-                        {locked && <Lock className="h-3.5 w-3.5 text-gray-300" />}
+                        {locked && <Lock className="h-3.5 w-3.5 text-ink-muted" />}
                       </label>
                     );
                   })}
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                  <p className="text-xs text-gray-400">
+                <div className="flex items-center justify-between pt-4 border-t border-border">
+                  <p className="text-xs text-ink-muted">
                     {isSuperAdmin
                       ? 'SuperAdmin permissions are fixed'
                       : hasChanges

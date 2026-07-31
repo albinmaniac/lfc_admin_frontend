@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, MapPin, User, Hash, ChevronLeft, ChevronRight } from 'lucide-react';
 import { familiesService } from '../services.js';
-import { PageHeader, DataTable, Badge, Switch, Button, Input, SummaryCard } from '../components.jsx';
+import { PageHeader, Badge, Switch, Button, Input, SummaryCard } from '../components.jsx';
 import { PermissionGate } from '../auth.jsx';
 import { PERMISSIONS, ROLES } from '../constants.js';
 import { Users, Home } from 'lucide-react';
@@ -10,10 +10,6 @@ import api from '../api.js';
 
 const EMPTY_FORM = { family_unit: '', house_name: '', address: '', ward_number: '' };
 
-// Pulls the first validation message out of a DRF error response, whatever
-// field it's on — not just the couple of fields this form happened to
-// hardcode before. Falls back to a generic message if the shape is
-// unexpected.
 function extractErrorMessage(err, fallback = 'Failed to save') {
   const data = err.response?.data;
   if (!data) return fallback;
@@ -171,35 +167,19 @@ export default function Families() {
     }
   };
 
-  // NOTE: reflects only the current page, not the whole dataset — an
-  // honest limitation without a dedicated stats endpoint. `pageInfo.count`
-  // (Total Families card) is the one number here accurate regardless of
-  // pagination.
   const activeCountOnPage = families.filter((f) => f.is_active).length;
   const hasActiveFilter = Boolean(search || unitFilter);
 
-  const columns = [
-    { key: 'house_name', header: 'House Name', render: (row) => <span className="font-medium text-gray-900">{row.house_name}</span> },
-    { key: 'family_unit_name', header: 'Family Unit' },
-    { key: 'family_head_name', header: 'Head of Family', render: (row) => row.family_head_name || '—' },
-    { key: 'family_phone_number', header: 'Phone', render: (row) => row.family_phone_number || '—' },
-    { key: 'ward_number', header: 'Ward' },
-    {
-      key: 'is_active',
-      header: 'Status',
-      render: (row) => (
-        <PermissionGate
-          permission={PERMISSIONS.MANAGE_FAMILIES}
-          fallback={<Badge variant={row.is_active ? 'success' : 'gray'}>{row.is_active ? 'Active' : 'Inactive'}</Badge>}
-        >
-          <Switch checked={row.is_active} onChange={(next) => handleToggleActive(row, next)} />
-        </PermissionGate>
-      ),
-    },
-  ];
-
   return (
     <div>
+      <style>{`
+        @keyframes familyFadeIn {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .family-fade-in { animation: familyFadeIn 0.35s ease-out both; }
+      `}</style>
+
       <PageHeader
         title="Families"
         description="Manage family households and their addresses."
@@ -228,7 +208,7 @@ export default function Families() {
         <select
           value={unitFilter}
           onChange={(e) => setUnitFilter(e.target.value)}
-          className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm"
+          className="h-10 rounded-xl border border-border bg-surface text-ink px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-strong"
         >
           <option value="">All family units</option>
           {units.map((u) => (
@@ -237,46 +217,102 @@ export default function Families() {
         </select>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={families}
-        loading={loading}
-        emptyTitle={hasActiveFilter ? 'No matching families' : 'No families yet'}
-        emptyDescription={
-          hasActiveFilter
-            ? 'Try a different search term or filter.'
-            : 'Add your first family to get started.'
-        }
-        rowActions={(row) => (
-          <div className="flex items-center justify-end gap-1">
-            <PermissionGate permission={PERMISSIONS.MANAGE_FAMILIES}>
-              <button onClick={() => openEditModal(row)} className="h-8 w-8 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600" aria-label="Edit">
-                <Pencil className="h-4 w-4" />
-              </button>
-            </PermissionGate>
-            <PermissionGate role={ROLES.SUPERADMIN}>
-              <button onClick={() => handleDelete(row)} className="h-8 w-8 flex items-center justify-center rounded-md text-gray-400 hover:bg-danger-50 hover:text-danger-600" aria-label="Delete">
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </PermissionGate>
-          </div>
-        )}
-      />
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-48 bg-surface-2 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      ) : families.length === 0 ? (
+        <div className="bg-surface border border-border rounded-2xl py-16 text-center">
+          <h3 className="text-sm font-semibold text-ink">
+            {hasActiveFilter ? 'No matching families' : 'No families yet'}
+          </h3>
+          <p className="text-sm text-ink-muted mt-1">
+            {hasActiveFilter ? 'Try a different search term or filter.' : 'Add your first family to get started.'}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {families.map((row, i) => (
+            <div
+              key={row.id}
+              className="family-fade-in bg-surface border border-border rounded-2xl p-4 hover:border-accent-strong/50 transition-colors flex flex-col"
+              style={{ animationDelay: `${i * 40}ms` }}
+            >
+              <div className="flex items-start justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="h-10 w-10 rounded-xl bg-accent text-accent-ink flex items-center justify-center shrink-0">
+                    <Home className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-ink truncate">{row.house_name}</p>
+                    <p className="text-xs text-ink-muted truncate">{row.family_unit_name}</p>
+                  </div>
+                </div>
+                <Badge variant={row.is_active ? 'success' : 'gray'}>{row.is_active ? 'Active' : 'Inactive'}</Badge>
+              </div>
+
+              <div className="space-y-1.5 mb-3 flex-1 text-xs text-ink-muted">
+                <p className="flex items-center gap-1.5">
+                  <User className="h-3.5 w-3.5 text-ink-muted" />
+                  {row.family_head_name || 'No head assigned'}
+                </p>
+                {row.address && (
+                  <p className="flex items-start gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 text-ink-muted mt-0.5 shrink-0" />
+                    <span className="line-clamp-2">{row.address}</span>
+                  </p>
+                )}
+                <div className="flex items-center gap-3 pt-0.5">
+                  <span className="flex items-center gap-1.5">
+                    <Hash className="h-3.5 w-3.5 text-ink-muted" />
+                    Ward {row.ward_number}
+                  </span>
+                  {row.family_phone_number && <span>{row.family_phone_number}</span>}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-border">
+                <PermissionGate
+                  permission={PERMISSIONS.MANAGE_FAMILIES}
+                  fallback={<span className="text-xs text-ink-muted">—</span>}
+                >
+                  <Switch checked={row.is_active} onChange={(next) => handleToggleActive(row, next)} label="Active" />
+                </PermissionGate>
+
+                <div className="flex items-center gap-1">
+                  <PermissionGate permission={PERMISSIONS.MANAGE_FAMILIES}>
+                    <button onClick={() => openEditModal(row)} className="h-7 w-7 flex items-center justify-center rounded-md text-ink-muted hover:bg-accent/20 hover:text-accent-ink" aria-label="Edit">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  </PermissionGate>
+                  <PermissionGate role={ROLES.SUPERADMIN}>
+                    <button onClick={() => handleDelete(row)} className="h-7 w-7 flex items-center justify-center rounded-md text-ink-muted hover:bg-danger-50 hover:text-danger-600" aria-label="Delete">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </PermissionGate>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {(pageInfo.next || pageInfo.previous) && (
-        <div className="flex items-center justify-between mt-3">
+        <div className="flex items-center justify-between mt-4">
           <button
             onClick={() => goToPage(pageInfo.previous)}
             disabled={!pageInfo.previous || loading}
-            className="flex items-center gap-1 text-sm text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:text-gray-900"
+            className="flex items-center gap-1 text-sm text-ink-muted disabled:opacity-40 disabled:cursor-not-allowed hover:text-ink"
           >
             <ChevronLeft className="h-4 w-4" /> Previous
           </button>
-          <span className="text-xs text-gray-400">{pageInfo.count} total</span>
+          <span className="text-xs text-ink-muted">{pageInfo.count} total</span>
           <button
             onClick={() => goToPage(pageInfo.next)}
             disabled={!pageInfo.next || loading}
-            className="flex items-center gap-1 text-sm text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:text-gray-900"
+            className="flex items-center gap-1 text-sm text-ink-muted disabled:opacity-40 disabled:cursor-not-allowed hover:text-ink"
           >
             Next <ChevronRight className="h-4 w-4" />
           </button>
@@ -284,26 +320,26 @@ export default function Families() {
       )}
 
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h3 className="text-base font-semibold text-gray-900">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 py-8 overflow-y-auto">
+          <div className="bg-surface border border-border rounded-2xl shadow-lg w-full max-w-md my-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h3 className="text-base font-semibold text-ink">
                 {editingId ? 'Edit Family' : 'Add Family'}
               </h3>
-              <button onClick={() => setModalOpen(false)} className="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100">
+              <button onClick={() => setModalOpen(false)} className="h-7 w-7 flex items-center justify-center rounded-md text-ink-muted hover:bg-surface-2">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <form onSubmit={handleSave} className="p-5 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Family Unit</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Family Unit</label>
                 <select
                   name="family_unit"
                   required
                   value={form.family_unit}
                   onChange={handleFormChange}
-                  className="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm"
+                  className="w-full h-10 rounded-xl border border-border bg-surface text-ink px-3 text-sm"
                 >
                   <option value="">Select a unit...</option>
                   {units.map((u) => (
@@ -312,23 +348,23 @@ export default function Families() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">House Name</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">House Name</label>
                 <Input type="text" name="house_name" required value={form.house_name} onChange={handleFormChange} placeholder="e.g. Anderson House" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Address</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Address</label>
                 <textarea
                   name="address"
                   required
                   value={form.address}
                   onChange={handleFormChange}
                   rows={2}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
+                  className="w-full rounded-xl border border-border bg-surface text-ink px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-strong"
                   placeholder="Full address"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Ward Number</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Ward Number</label>
                 <Input type="number" name="ward_number" required min={1} value={form.ward_number} onChange={handleFormChange} placeholder="e.g. 4" />
               </div>
 

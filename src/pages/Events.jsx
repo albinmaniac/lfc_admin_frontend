@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, X, Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Star, ChevronLeft, ChevronRight, MapPin, Clock3, Image as ImageIcon } from 'lucide-react';
 import { communicationService, familiesService } from '../services.js';
-import { PageHeader, DataTable, Badge, Switch, Button, Input, SummaryCard } from '../components.jsx';
+import { PageHeader, Badge, Switch, Button, Input, SummaryCard, formatDateTime } from '../components.jsx';
 import { PermissionGate } from '../auth.jsx';
 import { PERMISSIONS, ROLES } from '../constants.js';
 import { CalendarDays } from 'lucide-react';
@@ -47,7 +47,7 @@ export default function Events() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState(''); // '', 'true', 'false' — requires backend admin-view patch above
+  const [statusFilter, setStatusFilter] = useState('');
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -190,6 +190,10 @@ export default function Events() {
     try {
       const formData = new FormData();
       Object.entries(form).forEach(([key, value]) => {
+        if (key === 'family_unit') {
+          formData.append(key, value);
+          return;
+        }
         if (value !== '') formData.append(key, value);
       });
       if (coverFile) formData.append('cover_image', coverFile);
@@ -210,47 +214,20 @@ export default function Events() {
     }
   };
 
-  // Reflect only the current page — pageInfo.count (Total Events card) is
-  // the accurate figure regardless of pagination.
   const upcomingCountOnPage = events.filter((e) => e.event_status === 'UPCOMING').length;
   const featuredCountOnPage = events.filter((e) => e.is_featured).length;
   const hasActiveFilter = Boolean(search || typeFilter || statusFilter);
 
-  const columns = [
-    {
-      key: 'title',
-      header: 'Title',
-      render: (row) => (
-        <span className="font-medium text-gray-900 flex items-center gap-1.5">
-          {row.title}
-          {row.is_featured && <Star className="h-3.5 w-3.5 text-warning-500 fill-warning-500" />}
-        </span>
-      ),
-    },
-    { key: 'event_type_display', header: 'Type' },
-    { key: 'venue', header: 'Venue' },
-    { key: 'start_datetime', header: 'Starts', render: (row) => new Date(row.start_datetime).toLocaleString() },
-    {
-      key: 'event_status',
-      header: 'Status',
-      render: (row) => <Badge variant={STATUS_BADGE[row.event_status]}>{row.event_status}</Badge>,
-    },
-    {
-      key: 'is_active',
-      header: 'Active',
-      render: (row) => (
-        <PermissionGate
-          permission={PERMISSIONS.MANAGE_EVENTS}
-          fallback={<Badge variant={row.is_active ? 'success' : 'gray'}>{row.is_active ? 'Active' : 'Inactive'}</Badge>}
-        >
-          <Switch checked={row.is_active} onChange={(next) => handleToggleActive(row, next)} />
-        </PermissionGate>
-      ),
-    },
-  ];
-
   return (
     <div>
+      <style>{`
+        @keyframes eventFadeIn {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .event-fade-in { animation: eventFadeIn 0.35s ease-out both; }
+      `}</style>
+
       <PageHeader
         title="Events"
         description="Manage parish events, feasts, and gatherings."
@@ -275,14 +252,14 @@ export default function Events() {
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
         />
-        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm">
+        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="h-10 rounded-xl border border-border bg-surface text-ink px-3 text-sm">
           <option value="">All types</option>
           {EVENT_TYPES.map((t) => (
             <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
           ))}
         </select>
         <PermissionGate permission={PERMISSIONS.MANAGE_EVENTS}>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm">
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-10 rounded-xl border border-border bg-surface text-ink px-3 text-sm">
             <option value="">All events</option>
             <option value="true">Active only</option>
             <option value="false">Inactive only</option>
@@ -290,46 +267,111 @@ export default function Events() {
         </PermissionGate>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={events}
-        loading={loading}
-        emptyTitle={hasActiveFilter ? 'No matching events' : 'No events yet'}
-        emptyDescription={
-          hasActiveFilter
-            ? 'Try a different search term or filter.'
-            : 'Create your first event to get started.'
-        }
-        rowActions={(row) => (
-          <div className="flex items-center justify-end gap-1">
-            <PermissionGate permission={PERMISSIONS.MANAGE_EVENTS}>
-              <button onClick={() => openEditModal(row)} className="h-8 w-8 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600" aria-label="Edit">
-                <Pencil className="h-4 w-4" />
-              </button>
-            </PermissionGate>
-            <PermissionGate role={ROLES.SUPERADMIN}>
-              <button onClick={() => handleDelete(row)} className="h-8 w-8 flex items-center justify-center rounded-md text-gray-400 hover:bg-danger-50 hover:text-danger-600" aria-label="Delete">
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </PermissionGate>
-          </div>
-        )}
-      />
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-72 bg-surface-2 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      ) : events.length === 0 ? (
+        <div className="bg-surface border border-border rounded-2xl py-16 text-center">
+          <h3 className="text-sm font-semibold text-ink">
+            {hasActiveFilter ? 'No matching events' : 'No events yet'}
+          </h3>
+          <p className="text-sm text-ink-muted mt-1">
+            {hasActiveFilter ? 'Try a different search term or filter.' : 'Create your first event to get started.'}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {events.map((row, i) => (
+            <div
+              key={row.id}
+              className="event-fade-in bg-surface border border-border rounded-2xl overflow-hidden hover:shadow-md transition-shadow flex flex-col"
+              style={{ animationDelay: `${i * 40}ms` }}
+            >
+              <div className="relative w-full h-36 bg-accent/15">
+                {row.cover_image_url ? (
+                  <img src={row.cover_image_url} alt={row.title} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-accent-ink/40">
+                    <ImageIcon className="h-8 w-8" />
+                  </div>
+                )}
+                <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
+                  <Badge variant={STATUS_BADGE[row.event_status]}>{row.event_status}</Badge>
+                </div>
+                {row.is_featured && (
+                  <div className="absolute top-2.5 right-2.5 h-7 w-7 rounded-full bg-surface/90 flex items-center justify-center shadow-sm">
+                    <Star className="h-3.5 w-3.5 text-warning-500 fill-warning-500" />
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 flex flex-col flex-1">
+                <p className="text-xs text-ink-muted mb-1">{row.event_type_display}</p>
+                <h3 className="text-sm font-semibold text-ink mb-2 line-clamp-1">{row.title}</h3>
+
+                <div className="space-y-1.5 text-xs text-ink-muted mb-3">
+                  <p className="flex items-center gap-1.5">
+                    <Clock3 className="h-3.5 w-3.5 text-ink-muted" />
+                    {formatDateTime(row.start_datetime)}
+                  </p>
+                  <p className="flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 text-ink-muted" />
+                    {row.venue}
+                  </p>
+                  {row.family_unit_name && (
+                    <p className="text-ink-muted font-medium">{row.family_unit_name}</p>
+                  )}
+                </div>
+
+                <div className="flex-1" />
+
+                <div className="flex items-center justify-between pt-3 border-t border-border">
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant={row.is_public ? 'primary' : 'gray'}>{row.is_public ? 'Public' : 'Internal'}</Badge>
+                    <PermissionGate
+                      permission={PERMISSIONS.MANAGE_EVENTS}
+                      fallback={<Badge variant={row.is_active ? 'success' : 'gray'}>{row.is_active ? 'Active' : 'Inactive'}</Badge>}
+                    >
+                      <Switch checked={row.is_active} onChange={(next) => handleToggleActive(row, next)} />
+                    </PermissionGate>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <PermissionGate permission={PERMISSIONS.MANAGE_EVENTS}>
+                      <button onClick={() => openEditModal(row)} className="h-7 w-7 flex items-center justify-center rounded-md text-ink-muted hover:bg-accent/20 hover:text-accent-ink" aria-label="Edit">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                    </PermissionGate>
+                    <PermissionGate role={ROLES.SUPERADMIN}>
+                      <button onClick={() => handleDelete(row)} className="h-7 w-7 flex items-center justify-center rounded-md text-ink-muted hover:bg-danger-50 hover:text-danger-600" aria-label="Delete">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </PermissionGate>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {(pageInfo.next || pageInfo.previous) && (
-        <div className="flex items-center justify-between mt-3">
+        <div className="flex items-center justify-between mt-4">
           <button
             onClick={() => goToPage(pageInfo.previous)}
             disabled={!pageInfo.previous || loading}
-            className="flex items-center gap-1 text-sm text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:text-gray-900"
+            className="flex items-center gap-1 text-sm text-ink-muted disabled:opacity-40 disabled:cursor-not-allowed hover:text-ink"
           >
             <ChevronLeft className="h-4 w-4" /> Previous
           </button>
-          <span className="text-xs text-gray-400">{pageInfo.count} total</span>
+          <span className="text-xs text-ink-muted">{pageInfo.count} total</span>
           <button
             onClick={() => goToPage(pageInfo.next)}
             disabled={!pageInfo.next || loading}
-            className="flex items-center gap-1 text-sm text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:text-gray-900"
+            className="flex items-center gap-1 text-sm text-ink-muted disabled:opacity-40 disabled:cursor-not-allowed hover:text-ink"
           >
             Next <ChevronRight className="h-4 w-4" />
           </button>
@@ -338,23 +380,23 @@ export default function Events() {
 
       {modalOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 py-8 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-lg my-auto">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h3 className="text-base font-semibold text-gray-900">{editingId ? 'Edit Event' : 'Create Event'}</h3>
-              <button onClick={() => setModalOpen(false)} className="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100">
+          <div className="bg-surface rounded-2xl shadow-lg w-full max-w-lg my-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h3 className="text-base font-semibold text-ink">{editingId ? 'Edit Event' : 'Create Event'}</h3>
+              <button onClick={() => setModalOpen(false)} className="h-7 w-7 flex items-center justify-center rounded-md text-ink-muted hover:bg-surface-2">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <form onSubmit={handleSave} className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Title</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Title</label>
                 <Input type="text" name="title" required value={form.title} onChange={handleFormChange} />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Event Type</label>
-                <select name="event_type" value={form.event_type} onChange={handleFormChange} className="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm">
+                <label className="block text-sm font-medium text-ink mb-1.5">Event Type</label>
+                <select name="event_type" value={form.event_type} onChange={handleFormChange} className="w-full h-10 rounded-xl border border-border bg-surface text-ink px-3 text-sm">
                   {EVENT_TYPES.map((t) => (
                     <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
                   ))}
@@ -362,10 +404,10 @@ export default function Events() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Family Unit <span className="text-gray-400">(optional)</span>
+                <label className="block text-sm font-medium text-ink mb-1.5">
+                  Family Unit <span className="text-ink-muted">(optional)</span>
                 </label>
-                <select name="family_unit" value={form.family_unit} onChange={handleFormChange} className="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm">
+                <select name="family_unit" value={form.family_unit} onChange={handleFormChange} className="w-full h-10 rounded-xl border border-border bg-surface text-ink px-3 text-sm">
                   <option value="">Parish-wide (no specific unit)</option>
                   {units.map((u) => (
                     <option key={u.id} value={u.id}>{u.family_unit_name}</option>
@@ -374,47 +416,47 @@ export default function Events() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Description</label>
                 <textarea
                   name="description"
                   required
                   value={form.description}
                   onChange={handleFormChange}
                   rows={3}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
+                  className="w-full rounded-xl border border-border bg-surface text-ink px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-strong"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Venue</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Venue</label>
                 <Input type="text" name="venue" required value={form.venue} onChange={handleFormChange} />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Starts</label>
+                  <label className="block text-sm font-medium text-ink mb-1.5">Starts</label>
                   <Input type="datetime-local" name="start_datetime" required value={form.start_datetime} onChange={handleFormChange} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Ends</label>
+                  <label className="block text-sm font-medium text-ink mb-1.5">Ends</label>
                   <Input type="datetime-local" name="end_datetime" required value={form.end_datetime} onChange={handleFormChange} />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Cover Image <span className="text-gray-400">(optional)</span>
+                <label className="block text-sm font-medium text-ink mb-1.5">
+                  Cover Image <span className="text-ink-muted">(optional)</span>
                 </label>
-                <input type="file" accept="image/*" onChange={(e) => setCoverFile(e.target.files[0])} className="text-sm" />
+                <input type="file" accept="image/*" onChange={(e) => setCoverFile(e.target.files[0])} className="text-sm text-ink" />
               </div>
 
               <div className="flex gap-6">
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input type="checkbox" name="is_public" checked={form.is_public} onChange={handleFormChange} className="rounded border-gray-300" />
+                <label className="flex items-center gap-2 text-sm text-ink">
+                  <input type="checkbox" name="is_public" checked={form.is_public} onChange={handleFormChange} className="rounded border-border" />
                   Public
                 </label>
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input type="checkbox" name="is_featured" checked={form.is_featured} onChange={handleFormChange} className="rounded border-gray-300" />
+                <label className="flex items-center gap-2 text-sm text-ink">
+                  <input type="checkbox" name="is_featured" checked={form.is_featured} onChange={handleFormChange} className="rounded border-border" />
                   Featured
                 </label>
               </div>

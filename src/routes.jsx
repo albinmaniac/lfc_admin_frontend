@@ -13,6 +13,8 @@ import FamilyMembers from './pages/FamilyMembers.jsx';
 import ParishGroups from './pages/ParishGroups.jsx';
 import Notices from './pages/Notices.jsx';
 import Events from './pages/Events.jsx';
+import Feasts from './pages/Feasts.jsx';
+import Calendar from './pages/Calendar.jsx';
 import Gallery from './pages/Gallery.jsx';
 import Reports from './pages/Reports.jsx';
 import Security from './pages/Security.jsx';
@@ -31,6 +33,11 @@ const routeConfig = [
   { path: ROUTES.PARISH_GROUPS, element: <ParishGroups />, permission: PERMISSIONS.MANAGE_GROUPS },
   { path: ROUTES.NOTICES, element: <Notices />, permission: PERMISSIONS.MANAGE_NOTICES },
   { path: ROUTES.EVENTS, element: <Events />, permission: PERMISSIONS.MANAGE_EVENTS },
+  { path: ROUTES.FEASTS, element: <Feasts />, permission: PERMISSIONS.MANAGE_EVENTS },
+  // Calendar's backend endpoint is AllowAny — no permission gate here either.
+  // Still sits behind RequireAuth/Layout below, so it's login-only, not
+  // fully public like /login or /setup-password.
+  { path: ROUTES.CALENDAR, element: <Calendar /> },
   { path: ROUTES.GALLERY, element: <Gallery />, permission: PERMISSIONS.MANAGE_GALLERY },
   { path: ROUTES.REPORTS, element: <Reports />, permission: PERMISSIONS.VIEW_REPORTS },
   { path: ROUTES.SECURITY, element: <Security />, role: ROLES.SUPERADMIN },

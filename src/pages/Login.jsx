@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowRight, Church, Lock, Mail, Sparkles, Users } from 'lucide-react';
+import { ArrowRight, Church, Lock, Mail } from 'lucide-react';
 import { useAuth } from '../auth.jsx';
 import { Button, Input } from '../components.jsx';
+import ColorBends from "../components/ColorBends";
+import Strands from '../components/Strands';
 
 function extractErrorMessage(err, fallback = 'Invalid email or password') {
   const data = err.response?.data;
@@ -17,8 +19,6 @@ function extractErrorMessage(err, fallback = 'Invalid email or password') {
   }
   return fallback;
 }
-
-const HERO_BADGE = 'Faith • Community • Grace';
 
 export default function Login() {
   const { login } = useAuth();
@@ -47,26 +47,67 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[linear-gradient(135deg,#f7efe2_0%,#efe1c4_45%,#e8d4a8_100%)] p-4 sm:p-8">
+    <div className="relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-bg text-ink p-4 sm:p-8">
+      <div className="absolute inset-0 -z-30 overflow-hidden">
+        <ColorBends
+          className="h-full w-full"
+          colors={["#D7F369", "#90AB8B", "#5E7F63"]}
+          rotation={90}
+          speed={0.15}
+          scale={1.2}
+          frequency={1}
+          warpStrength={0.9}
+          mouseInfluence={0.3}
+          noise={0.05}
+          parallax={0.2}
+          iterations={2}
+          intensity={1.4}
+          bandWidth={5}
+          transparent={false}
+          autoRotate={5}
+        />
+      </div>
+      <div className="absolute inset-0 -z-20 bg-black/10" />
+      {/* Animated ambient background — same technique as AcceptInvitation.jsx
+          so the two pre-auth pages read as a matched pair. Pure CSS, no
+          image asset to fail to load. Re-pointed to theme variables — these
+          were still on the old sage/clay/teal hex from before the palette
+          pivot, sitting redundantly under ColorBends' own animated colors. */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full blur-3xl animate-[drift1_16s_ease-in-out_infinite]" style={{ background: 'color-mix(in srgb, var(--accent-strong) 25%, transparent)' }} />
+        <div className="absolute top-1/3 -right-32 h-[28rem] w-[28rem] rounded-full blur-3xl animate-[drift2_20s_ease-in-out_infinite]" style={{ background: 'color-mix(in srgb, var(--brand-accent) 20%, transparent)' }} />
+        <div className="absolute -bottom-32 left-1/4 h-96 w-96 rounded-full blur-3xl animate-[drift1_18s_ease-in-out_infinite_reverse]" style={{ background: 'color-mix(in srgb, var(--accent-strong) 15%, transparent)' }} />
+      </div>
+      <style>{`
+        @keyframes drift1 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          50% { transform: translate(40px, 30px) scale(1.08); }
+        }
+        @keyframes drift2 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          50% { transform: translate(-30px, 40px) scale(1.05); }
+        }
+      `}</style>
+
       <div className="relative w-full max-w-6xl">
-        <div className="grid overflow-hidden rounded-[36px] border border-white/70 bg-white shadow-[0_40px_120px_rgba(72,46,13,0.16)] md:min-h-[620px] md:grid-cols-[1.02fr_0.98fr]">
-          <div className="flex flex-col justify-between bg-[linear-gradient(180deg,#ffffff_0%,#fcf8f1_60%,#f7efe2_100%)] p-8 sm:p-12 lg:p-14">
+        <div className="grid overflow-hidden rounded-[36px] border border-border bg-surface backdrop-blur-sm shadow-[0_40px_120px_rgba(30,50,30,0.12)] md:min-h-[620px] md:grid-cols-[1.02fr_0.98fr]">
+          <div className="flex flex-col justify-between bg-surface p-8 sm:p-12 lg:p-14">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#8A5A12]/10 bg-[#fffaf1] px-3.5 py-2 text-sm font-medium text-[#7a4b10] shadow-sm">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border bg-accent px-3.5 py-2 text-sm font-medium text-accent-ink shadow-sm">
                 <Church className="h-4 w-4" />
                 LFC Church Administration
               </div>
 
-              <h1 className="mt-8 text-4xl font-semibold tracking-tight text-slate-900 sm:text-[2.6rem]">
+              <h1 className="mt-8 text-4xl font-semibold tracking-tight text-ink sm:text-[2.6rem]">
                 Welcome back
               </h1>
-              <p className="mt-3 max-w-lg text-sm leading-7 text-slate-600">
+              <p className="mt-3 max-w-lg text-sm leading-7 text-ink-muted">
                 Access the parish portal with your secure credentials and manage ministry operations with clarity.
               </p>
 
               <form onSubmit={handleSubmit} className="mt-8 space-y-4">
                 <div className="relative">
-                  <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
                   <Input
                     type="email"
                     name="email"
@@ -75,12 +116,12 @@ export default function Login() {
                     value={form.email}
                     onChange={handleChange}
                     placeholder="you@lfcchurch.org"
-                    className="h-13 w-full rounded-2xl border border-slate-200 bg-white/90 py-3.5 pl-11 pr-4 text-sm text-slate-800 shadow-[0_8px_24px_rgba(15,23,42,0.04)] placeholder:text-slate-400 focus:border-[#8A5A12]/40 focus:bg-white"
+                    className="h-12 w-full rounded-2xl border border-border bg-surface py-3.5 pl-11 pr-4 text-sm text-ink shadow-[0_8px_24px_rgba(15,23,42,0.04)] placeholder:text-ink-muted focus:border-accent-strong"
                   />
                 </div>
 
                 <div className="relative">
-                  <Lock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Lock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
                   <Input
                     type="password"
                     name="password"
@@ -89,23 +130,23 @@ export default function Login() {
                     value={form.password}
                     onChange={handleChange}
                     placeholder="Password"
-                    className="h-13 w-full rounded-2xl border border-slate-200 bg-white/90 py-3.5 pl-11 pr-4 text-sm text-slate-800 shadow-[0_8px_24px_rgba(15,23,42,0.04)] placeholder:text-slate-400 focus:border-[#8A5A12]/40 focus:bg-white"
+                    className="h-12 w-full rounded-2xl border border-border bg-surface py-3.5 pl-11 pr-4 text-sm text-ink shadow-[0_8px_24px_rgba(15,23,42,0.04)] placeholder:text-ink-muted focus:border-accent-strong"
                   />
                 </div>
 
                 <div className="flex items-center justify-between pt-1 text-sm">
-                  <label className="flex items-center gap-2 text-slate-500">
-                    <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-[#8A5A12] focus:ring-[#8A5A12]" />
+                  <label className="flex items-center gap-2 text-ink-muted">
+                    <input type="checkbox" className="h-4 w-4 rounded border-border text-accent-strong focus:ring-accent-strong" />
                     Remember me
                   </label>
-                  <a href="#" className="font-medium text-[#8A5A12] hover:text-[#6E4710]">
+                  <a href="#" className="font-medium text-ink hover:opacity-80">
                     Forgot password?
                   </a>
                 </div>
 
                 <Button
                   type="submit"
-                  className="h-13 w-full rounded-full bg-slate-900 py-3.5 text-sm font-medium text-white shadow-[0_14px_35px_rgba(15,23,42,0.22)] transition hover:bg-slate-800"
+                  className="h-12 w-full rounded-full"
                   loading={submitting}
                   disabled={submitting}
                 >
@@ -116,51 +157,30 @@ export default function Login() {
                 </Button>
               </form>
 
-              <p className="mt-6 text-center text-sm text-slate-500">
-                Trouble signing in? <a href="#" className="font-medium text-slate-800">Contact the office</a>
+              <p className="mt-6 text-center text-sm text-ink-muted">
+                Trouble signing in? <a href="#" className="font-medium text-ink">Contact the office</a>
               </p>
             </div>
           </div>
 
-          <div className="relative hidden overflow-hidden bg-[#4a2f0a] md:flex md:min-h-[620px]">
-            <img
-              src="/church-bg.png"
-              alt="Parish church background"
-              className="absolute inset-0 h-full w-full object-cover object-center scale-[1.03]"
+          <div className="relative hidden md:block min-h-[620px] overflow-hidden bg-black">
+            <Strands
+              className="absolute inset-0"
+              colors={["#D7F369", "#5E7F63", "#90AB8B"]}
+              count={3}
+              speed={0.45}
+              amplitude={1}
+              waviness={1}
+              thickness={0.7}
+              glow={2.8}
+              taper={3}
+              spread={1}
+              intensity={0.7}
+              saturation={1.6}
+              opacity={1}
+              scale={1.5}
+              glass={false}
             />
-            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.12),transparent_40%,rgba(0,0,0,0.35))]" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.16),transparent_35%)]" />
-
-            <div className="relative z-10 flex h-full flex-col justify-between p-8 lg:p-10">
-              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3.5 py-2 text-sm font-medium text-white/90 backdrop-blur-sm">
-                <Sparkles className="h-4 w-4" />
-                {HERO_BADGE}
-              </div>
-
-              <div className="max-w-sm rounded-[24px] border border-white/20 bg-white/10 p-6 backdrop-blur-md">
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-white/80">Parish life</p>
-                <h2 className="mt-2 text-2xl font-semibold text-white">Serving the community with care.</h2>
-                <p className="mt-3 text-sm leading-7 text-white/80">
-                  A refined portal for ministry teams, parish staff, and leadership to stay connected.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  className="rounded-full border border-white/35 bg-white/15 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-white/25"
-                >
-                  Parish Life
-                </button>
-                <button
-                  type="button"
-                  className="flex items-center gap-2 rounded-full border border-white/35 bg-white/15 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-white/25"
-                >
-                  <Users className="h-4 w-4" />
-                  Our Ministries
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </div>

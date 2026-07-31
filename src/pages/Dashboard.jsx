@@ -1,10 +1,14 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '../auth';
+import { useNavigate } from 'react-router-dom';
 import { dashboardService, communicationService, galleryService } from '../services';
 import { SummaryCard, Button, formatDate } from '../components';
 import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  PieChart, Pie, Cell,
+} from 'recharts';
+import {
   ArrowRight,
-  BadgeCheck,
   BellRing,
   CalendarDays,
   Clock3,
@@ -13,6 +17,7 @@ import {
   Megaphone,
   RotateCcw,
   Sparkles,
+  Star,
   UserCog,
   Users,
 } from 'lucide-react';
@@ -24,15 +29,27 @@ function normalizeList(payload) {
 }
 
 function getItemTitle(item, fallback) {
-  return item?.title || item?.name || item?.subject || item?.heading || item?.heading || fallback;
+  return item?.title || item?.name || item?.subject || item?.heading || fallback;
 }
 
 function getItemDescription(item, fallback) {
   return item?.description || item?.details || item?.body || item?.summary || item?.message || fallback;
 }
 
+// Recharts needs actual color values (SVG fill/stroke), not Tailwind class
+// names — but CSS custom properties work fine here, so these reference the
+// same --accent-strong/--border/--ink-muted tokens from index.css and flip
+// automatically with the .dark class, same as everything else on the page.
+// The two extra pie slices use fixed olive-grays (not theme tokens) since
+// the palette only has one accent hue (lime) and a 4-slice donut needs more
+// distinct values than that alone provides.
+const CHART_ACTIVE = 'var(--accent-strong)';
+const CHART_TOTAL = 'var(--border)';
+const PIE_COLORS = ['var(--accent-strong)', 'var(--accent)', '#8A8C7E', '#4E5044'];
+
 export default function Dashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const displayName = user
     ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || user.email || 'User'
     : '';
@@ -106,26 +123,26 @@ export default function Dashboard() {
     { key: 'gallery', label: 'Published Photos', icon: Image, value: summary?.gallery?.photos ?? 0, description: 'Visible gallery media' },
   ];
 
-  const analytics = [
-    {
-      label: 'Family coverage',
-      value: `${summary?.families?.active ?? 0}/${summary?.families?.total ?? 0}`,
-      percent: summary?.families?.total ? Math.round(((summary.families.active || 0) / summary.families.total) * 100) : 0,
-      tone: 'from-primary-600 to-primary-500',
-    },
-    {
-      label: 'Active ministry presence',
-      value: `${summary?.staffs?.active ?? 0}/${summary?.staffs?.total ?? 0}`,
-      percent: summary?.staffs?.total ? Math.round(((summary.staffs.active || 0) / summary.staffs.total) * 100) : 0,
-      tone: 'from-slate-700 to-slate-600',
-    },
-    {
-      label: 'Communication reach',
-      value: `${summary?.notices?.featured ?? 0}/${summary?.notices?.active ?? 0}`,
-      percent: summary?.notices?.active ? Math.round(((summary.notices.featured || 0) / summary.notices.active) * 100) : 0,
-      tone: 'from-amber-500 to-orange-500',
-    },
+  // (summary?.events?.featured ?? 0) + (summary?.notices?.featured ?? 0) —
+  // kept as explicit parenthesized additions; the previous unparenthesized
+  // version silently dropped the notices count due to ?? short-circuiting
+  // before + ever ran.
+  const featuredTotal = (summary?.events?.featured ?? 0) + (summary?.notices?.featured ?? 0);
+
+  const coverageData = [
+    { name: 'Families', total: summary?.families?.total ?? 0, active: summary?.families?.active ?? 0 },
+    { name: 'Family Units', total: summary?.family_units?.total ?? 0, active: summary?.family_units?.active ?? 0 },
+    { name: 'Staff', total: summary?.staffs?.total ?? 0, active: summary?.staffs?.active ?? 0 },
   ];
+
+  const contentMixRaw = [
+    { name: 'Notices', value: summary?.notices?.active ?? 0 },
+    { name: 'Upcoming Events', value: summary?.events?.upcoming ?? 0 },
+    { name: 'Gallery Albums', value: summary?.gallery?.albums ?? 0 },
+    { name: 'Mass Timings', value: summary?.parish?.mass_timings ?? 0 },
+  ];
+  const contentMixData = contentMixRaw.filter((d) => d.value > 0);
+  const contentMixTotal = contentMixData.reduce((sum, d) => sum + d.value, 0);
 
   const ERROR_MESSAGES = {
     auth: 'Your session has expired. Please sign in again.',
@@ -136,33 +153,31 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[28px] border border-gray-100 bg-gradient-to-br from-[#f9f3e7] via-white to-[#f3e4c9] p-6 shadow-sm">
+      {/* Hero — flat surface, solid lime pill accent, matches the reference
+          instead of a soft gradient wash. */}
+      <section className="overflow-hidden rounded-[28px] border border-border bg-surface p-4 sm:p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1.5 text-sm font-medium text-primary-700 shadow-sm">
+            <div className="inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink">
               <Sparkles className="h-4 w-4" />
               Parish overview
             </div>
-            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-gray-900">
+            <h1 className="mt-4 text-xl sm:text-2xl font-semibold tracking-tight text-ink">
               Welcome back{displayName ? `, ${displayName}` : ''}
             </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">
               {summary?.parish?.name
                 ? `${summary.parish.name} • ${summary.parish.diocese || 'Parish dashboard'}`
                 : "Here's a live view of your parish activity and communications."}
             </p>
           </div>
 
-          <div className="rounded-2xl bg-slate-900 px-4 py-3 text-white shadow-sm">
-            <p className="text-[11px] uppercase tracking-[0.3em] text-white/70">Today</p>
-            <p className="mt-1 text-lg font-semibold">{summary?.parish?.mass_timings ?? 0} active Mass timings</p>
-          </div>
         </div>
       </section>
 
       {errorType ? (
-        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <p className="mb-3 text-sm text-danger-600">{ERROR_MESSAGES[errorType]}</p>
+        <div className="rounded-2xl border border-warning-500/30 bg-warning-50 p-5">
+          <p className="mb-3 text-sm text-warning-700">{ERROR_MESSAGES[errorType]}</p>
           <Button variant="secondary" size="sm" icon={RotateCcw} onClick={fetchDashboardData}>
             Retry
           </Button>
@@ -175,150 +190,184 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-            <section className="rounded-[24px] border border-gray-100 bg-white p-6 shadow-sm">
-              <div className="flex items-center justify-between">
+          <div className="grid gap-4 sm:gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+            <section className="rounded-[24px] border border-border bg-surface p-4 sm:p-6">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Parish analytics</h2>
-                  <p className="mt-1 text-sm text-gray-500">Live insights from the current parish records.</p>
+                  <h2 className="text-lg font-semibold text-ink">Coverage: Total vs Active</h2>
+                  <p className="mt-1 text-sm text-ink-muted">Registered records versus records currently active.</p>
                 </div>
-                <div className="rounded-full bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700">
+                <div className="self-start rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-ink">
                   Updated live
                 </div>
               </div>
 
-              <div className="mt-6 space-y-4">
-                {analytics.map((item) => (
-                  <div key={item.label}>
-                    <div className="mb-2 flex items-center justify-between text-sm">
-                      <span className="font-medium text-gray-700">{item.label}</span>
-                      <span className="text-gray-500">{item.value}</span>
-                    </div>
-                    <div className="h-2.5 overflow-hidden rounded-full bg-gray-100">
-                      <div className={`h-full rounded-full bg-gradient-to-r ${item.tone}`} style={{ width: `${Math.min(item.percent, 100)}%` }} />
-                    </div>
+              <div className="mt-6 h-64">
+                {loading ? (
+                  <div className="h-full w-full animate-pulse rounded-xl bg-surface-2" />
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={coverageData} barGap={6}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                      <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'var(--ink-muted)' }} axisLine={false} tickLine={false} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: 'var(--ink-muted)' }} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        cursor={{ fill: 'var(--surface-2)' }}
+                        contentStyle={{
+                          borderRadius: 12,
+                          border: '1px solid var(--border)',
+                          fontSize: 13,
+                          background: 'var(--surface)',
+                          color: 'var(--ink)',
+                        }}
+                        formatter={(value, name) => [
+                          <span style={{ color: 'var(--accent-strong)', fontWeight: 600 }}>
+                            {`${name}: ${value}`}
+                          </span>,
+                          
+                        ]}
+                      />
+                      <Bar dataKey="total" name="Total" fill={CHART_TOTAL} radius={[6, 6, 0, 0]} color = 'var(--ink)' />
+                      <Bar dataKey="active" name="Active" fill={CHART_ACTIVE} radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </section>
+
+            <section className="rounded-[24px] border border-border bg-surface p-4 sm:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-ink">Content mix</h2>
+                  <p className="mt-1 text-sm text-ink-muted">What's currently published, at a glance.</p>
+                </div>
+              </div>
+
+              <div className="mt-4 h-56">
+                {loading ? (
+                  <div className="h-full w-full animate-pulse rounded-xl bg-surface-2" />
+                ) : contentMixData.length ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={contentMixData}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={55}
+                        outerRadius={80}
+                        paddingAngle={3}
+                      >
+                        {contentMixData.map((entry, index) => (
+                          <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, background: 'var(--surface)', color: 'var(--ink)' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-full items-center  justify-center text-sm text-ink-muted">
+                    No published content yet.
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-2 space-y-2">
+                {contentMixData.map((entry, index) => (
+                  <div key={entry.name} className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2 text-ink-muted">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }} />
+                      {entry.name}
+                    </span>
+                    <span className="font-medium text-ink">
+                      {entry.value}
+                      <span className="ml-1 text-xs text-ink-muted">
+                        ({contentMixTotal ? Math.round((entry.value / contentMixTotal) * 100) : 0}%)
+                      </span>
+                    </span>
                   </div>
                 ))}
               </div>
             </section>
-
-            <section className="rounded-[24px] border border-gray-100 bg-slate-900 p-6 text-white shadow-sm">
-              <div className="flex items-center gap-2 text-sm font-medium text-white/80">
-                <BadgeCheck className="h-4 w-4" />
-                Parish pulse
-              </div>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
-                  <p className="text-sm text-white/70">Upcoming events</p>
-                  <p className="mt-2 text-3xl font-semibold">{summary?.events?.upcoming ?? 0}</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
-                  <p className="text-sm text-white/70">Active notices</p>
-                  <p className="mt-2 text-3xl font-semibold">{summary?.notices?.active ?? 0}</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
-                  <p className="text-sm text-white/70">Gallery media</p>
-                  <p className="mt-2 text-3xl font-semibold">{summary?.gallery?.photos ?? 0}</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
-                  <p className="text-sm text-white/70">Featured content</p>
-                  <p className="mt-2 text-3xl font-semibold">{summary?.events?.featured ?? 0 + summary?.notices?.featured ?? 0}</p>
-                </div>
-              </div>
-            </section>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <section className="rounded-[24px] border border-gray-100 bg-white p-6 shadow-sm">
+          {/* Second stat row — now real SummaryCards instead of hand-rolled
+              markup, so they stay in sync with any future SummaryCard change. */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <SummaryCard icon={CalendarDays} title="Upcoming events" value={summary?.events?.upcoming ?? 0} loading={loading} />
+            <SummaryCard icon={BellRing} title="Active notices" value={summary?.notices?.active ?? 0} loading={loading} />
+            <SummaryCard icon={Image} title="Gallery media" value={summary?.gallery?.photos ?? 0} loading={loading} />
+            <SummaryCard icon={Star} title="Featured content" value={featuredTotal} loading={loading} />
+          </div>
+
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+            <section className="rounded-[24px] border border-border bg-surface p-4 sm:p-6">
               <div className="flex items-center gap-2">
-                <CalendarDays className="h-5 w-5 text-primary-600" />
-                <h2 className="text-lg font-semibold text-gray-900">Upcoming events</h2>
+                <CalendarDays className="h-5 w-5 text-ink-muted" />
+                <h2 className="text-lg font-semibold text-ink">Upcoming events</h2>
               </div>
               <div className="mt-5 space-y-3">
                 {upcomingEvents.length ? (
                   upcomingEvents.slice(0, 4).map((event) => (
-                    <div key={event.id || event.title} className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4">
-                      <div className="flex items-start justify-between gap-3">
+                    <button
+                      key={event.id || event.title}
+                      type="button"
+                      onClick={() => navigate('/events')}
+                      className="w-full text-left rounded-2xl border border-border bg-surface-2 p-4 hover:border-accent-strong/50 transition-colors"
+                    >
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                         <div>
-                          <p className="font-medium text-gray-900">{getItemTitle(event, 'Upcoming event')}</p>
-                          <p className="mt-1 text-sm text-gray-500">{getItemDescription(event, 'No details provided yet.')}</p>
+                          <p className="font-medium text-ink">{getItemTitle(event, 'Upcoming event')}</p>
+                          <p className="mt-1 text-sm text-ink-muted">{getItemDescription(event, 'No details provided yet.')}</p>
                         </div>
-                        <div className="flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs text-gray-500 shadow-sm">
+                        <div className="flex items-center gap-1 self-start rounded-full bg-surface px-2.5 py-1 text-xs text-ink-muted border border-border shrink-0">
                           <Clock3 className="h-3.5 w-3.5" />
                           {formatDate(event.start_datetime || event.date || event.created_at)}
                         </div>
                       </div>
-                    </div>
+                    </button>
                   ))
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-gray-200 p-5 text-sm text-gray-500">
+                  <div className="rounded-2xl border border-dashed border-border p-5 text-sm text-ink-muted">
                     No upcoming events are available right now.
                   </div>
                 )}
               </div>
             </section>
 
-            <section className="rounded-[24px] border border-gray-100 bg-white p-6 shadow-sm">
+            <section className="rounded-[24px] border border-border bg-surface p-4 sm:p-6">
               <div className="flex items-center gap-2">
-                <BellRing className="h-5 w-5 text-amber-600" />
-                <h2 className="text-lg font-semibold text-gray-900">Active notices</h2>
+                <BellRing className="h-5 w-5 text-ink-muted" />
+                <h2 className="text-lg font-semibold text-ink">Active notices</h2>
               </div>
               <div className="mt-5 space-y-3">
                 {activeNotices.length ? (
                   activeNotices.slice(0, 4).map((notice) => (
-                    <div key={notice.id || notice.title} className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4">
-                      <div className="flex items-start justify-between gap-3">
+                    <button
+                      key={notice.id || notice.title}
+                      type="button"
+                      onClick={() => navigate('/notices')}
+                      className="w-full text-left rounded-2xl border border-border bg-surface-2 p-4 hover:border-accent-strong/50 transition-colors"
+                    >
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                         <div>
-                          <p className="font-medium text-gray-900">{getItemTitle(notice, 'Notice')}</p>
-                          <p className="mt-1 text-sm text-gray-500">{getItemDescription(notice, 'No summary has been added yet.')}</p>
+                          <p className="font-medium text-ink">{getItemTitle(notice, 'Notice')}</p>
+                          <p className="mt-1 text-sm text-ink-muted">{getItemDescription(notice, 'No summary has been added yet.')}</p>
                         </div>
-                        <div className="flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs text-gray-500 shadow-sm">
+                        <div className="flex items-center gap-1 self-start rounded-full bg-surface px-2.5 py-1 text-xs text-ink-muted border border-border shrink-0">
                           <Megaphone className="h-3.5 w-3.5" />
                           Active
                         </div>
                       </div>
-                    </div>
+                    </button>
                   ))
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-gray-200 p-5 text-sm text-gray-500">
+                  <div className="rounded-2xl border border-dashed border-border p-5 text-sm text-ink-muted">
                     No active notices are available right now.
                   </div>
                 )}
               </div>
             </section>
           </div>
-
-          <section className="rounded-[24px] border border-gray-100 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Featured gallery albums</h2>
-                <p className="mt-1 text-sm text-gray-500">The latest featured parish highlights from the gallery.</p>
-              </div>
-              <div className="flex items-center gap-2 text-sm font-medium text-primary-700">
-                <Image className="h-4 w-4" />
-                {featuredAlbums.length} featured
-              </div>
-            </div>
-
-            <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {featuredAlbums.length ? (
-                featuredAlbums.slice(0, 3).map((album) => (
-                  <div key={album.id || album.title} className="rounded-2xl border border-gray-100 bg-gray-50/80 p-4">
-                    <p className="font-medium text-gray-900">{getItemTitle(album, 'Featured album')}</p>
-                    <p className="mt-2 text-sm text-gray-500">{getItemDescription(album, 'A parish memory collection.')}</p>
-                    <div className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary-700">
-                      View collection
-                      <ArrowRight className="h-4 w-4" />
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-2xl border border-dashed border-gray-200 p-5 text-sm text-gray-500 md:col-span-2 xl:col-span-3">
-                  No featured gallery albums are available right now.
-                </div>
-              )}
-            </div>
-          </section>
         </>
       )}
     </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { Menu, X, Search, LogOut, ChevronDown, ChevronLeft } from 'lucide-react';
+import { Menu, X, Search, LogOut, ChevronDown, ChevronLeft, Sun, Moon } from 'lucide-react';
 import { NAVIGATION, ROLES } from './constants.js';
 import { useAuth, usePermission, useHasRole } from './auth.jsx';
 
@@ -31,11 +31,11 @@ function NavItem({ item, collapsed, onNavigate }) {
       onClick={onNavigate}
       title={item.label}
       className={({ isActive }) =>
-        `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all border-l-2 ${
+        `flex items-center gap-3 rounded-full px-3.5 py-2.5 text-sm font-medium transition-colors ${
           isActive
-            ? 'bg-cyan-400/20 text-white border-cyan-300 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]'
-            : 'text-indigo-100/90 hover:bg-white/12 hover:text-white border-transparent'
-        } ${collapsed ? 'justify-center px-2.5 rounded-full h-11 w-11 p-0' : ''}`
+            ? 'bg-accent text-accent-ink font-semibold'
+            : 'text-ink-muted hover:bg-surface-2 hover:text-ink'
+        } ${collapsed ? 'justify-center px-0 h-11 w-11 mx-auto' : ''}`
       }
     >
       {Icon ? <Icon className="h-5 w-5 shrink-0" /> : <span className="h-5 w-5 shrink-0" />}
@@ -58,11 +58,11 @@ function NavGroup({ group, collapsed, onNavigate }) {
   return (
     <div className="mb-1">
       {!collapsed && (
-        <p className="px-3 pt-4 pb-1 text-xs font-semibold uppercase tracking-wide text-indigo-200/80">
+        <p className="px-3.5 pt-4 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted/70">
           {group.label}
         </p>
       )}
-      <div className="space-y-0.5">
+      <div className="space-y-1">
         {(visibleItems ?? []).map((item) => (
           <NavItem key={item.path} item={item} collapsed={collapsed} onNavigate={onNavigate} />
         ))}
@@ -71,7 +71,12 @@ function NavGroup({ group, collapsed, onNavigate }) {
   );
 }
 
-function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
+// Flat, solid sidebar — no blur, no gradients, no SVG. Matches the
+// reference: rounded logo mark, pill-highlighted active nav item, utility
+// row (theme toggle + log out) pinned to the bottom.
+function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen, theme, toggleTheme }) {
+  const { logout } = useAuth();
+
   return (
     <>
       {mobileOpen && (
@@ -81,34 +86,36 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
         />
       )}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-40 flex flex-col bg-gradient-to-br from-slate-900 via-indigo-950 to-teal-900 text-white shadow-2xl border-r border-white/10 transition-all duration-200 ${
+        className={`fixed lg:relative inset-y-0 left-0 z-40 flex flex-col bg-surface border-r border-border transition-all duration-200 ${
           collapsed ? 'w-16' : 'w-64'
         } ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
-        <div className="h-14 flex items-center justify-between px-4 border-b border-white/10 shrink-0">
+        <div className="h-14 flex items-center justify-between px-4 border-b border-border shrink-0">
           {!collapsed && (
             <div className="flex items-center gap-2">
-              <span className="inline-flex h-2.5 w-2.5 rounded-full bg-cyan-400" />
-              <span className="font-semibold tracking-tight text-white">LFC Church</span>
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-accent-ink text-xs font-bold">
+                L
+              </span>
+              <span className="font-semibold tracking-tight text-ink">LFC Church</span>
             </div>
           )}
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="hidden lg:flex h-7 w-7 items-center justify-center rounded-md text-indigo-100/80 hover:bg-white/10 hover:text-white"
+            className="hidden lg:flex h-7 w-7 items-center justify-center rounded-md text-ink-muted hover:bg-surface-2 hover:text-ink"
             aria-label="Toggle sidebar"
           >
             <ChevronLeft className={`h-4 w-4 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
           </button>
           <button
             onClick={() => setMobileOpen(false)}
-            className="lg:hidden h-7 w-7 flex items-center justify-center rounded-md text-indigo-100/80 hover:bg-white/10 hover:text-white"
+            className="lg:hidden h-7 w-7 flex items-center justify-center rounded-md text-ink-muted hover:bg-surface-2 hover:text-ink"
             aria-label="Close sidebar"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-2 py-2">
+        <nav className="flex-1 overflow-y-auto px-3 py-3">
           {NAVIGATION.map((group) => (
             <NavGroup
               key={group.label}
@@ -118,13 +125,39 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) {
             />
           ))}
         </nav>
+
+        {/* Utility row — theme toggle + log out, pinned to the bottom like
+            the reference's Help/Log Out block. "Help" was left out since
+            there's no real help page behind it yet — a dead link isn't
+            better UI just because the reference had one. */}
+        <div className="border-t border-border px-3 py-3 space-y-1 shrink-0">
+          <button
+            onClick={toggleTheme}
+            className={`w-full flex items-center gap-3 rounded-full px-3.5 py-2.5 text-sm font-medium text-ink-muted hover:bg-surface-2 hover:text-ink transition-colors ${
+              collapsed ? 'justify-center px-0 h-11 w-11 mx-auto' : ''
+            }`}
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? <Sun className="h-5 w-5 shrink-0" /> : <Moon className="h-5 w-5 shrink-0" />}
+            {!collapsed && <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>}
+          </button>
+          <button
+            onClick={logout}
+            className={`w-full flex items-center gap-3 rounded-full px-3.5 py-2.5 text-sm font-medium text-ink-muted hover:bg-danger-50 hover:text-danger-600 transition-colors ${
+              collapsed ? 'justify-center px-0 h-11 w-11 mx-auto' : ''
+            }`}
+          >
+            <LogOut className="h-5 w-5 shrink-0" />
+            {!collapsed && <span>Log out</span>}
+          </button>
+        </div>
       </aside>
     </>
   );
 }
 
 function Navbar({ onOpenSidebar }) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef(null);
 
@@ -145,21 +178,21 @@ function Navbar({ onOpenSidebar }) {
     : '';
 
   return (
-    <header className="h-14 shrink-0 flex items-center gap-3 border-b border-gray-200 bg-white px-4 lg:px-6">
+    <header className="h-14 shrink-0 flex items-center gap-3 border-b border-border bg-surface px-4 lg:px-6">
       <button
         onClick={onOpenSidebar}
-        className="lg:hidden h-8 w-8 flex items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 shrink-0"
+        className="lg:hidden h-8 w-8 flex items-center justify-center rounded-md text-ink-muted hover:bg-surface-2 shrink-0"
         aria-label="Open sidebar"
       >
         <Menu className="h-5 w-5" />
       </button>
 
       <div className="relative flex-1 max-w-md hidden sm:block">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-muted" />
         <input
           type="text"
           placeholder="Search..."
-          className="w-full h-9 rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500 focus-visible:bg-white"
+          className="w-full h-9 rounded-lg border border-border bg-surface-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-strong focus-visible:bg-surface"
         />
       </div>
 
@@ -171,28 +204,25 @@ function Navbar({ onOpenSidebar }) {
         <div className="relative">
           <button
             onClick={() => setProfileOpen((o) => !o)}
-            className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-gray-100"
+            className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-surface-2"
           >
-            <div className="h-7 w-7 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-semibold shrink-0">
+            <div className="h-7 w-7 rounded-full bg-accent text-accent-ink flex items-center justify-center text-xs font-semibold shrink-0">
               {displayName ? displayName.charAt(0).toUpperCase() : 'U'}
             </div>
-            <span className="hidden md:block text-sm font-medium text-gray-700">{displayName || 'User'}</span>
-            <ChevronDown className="hidden md:block h-3.5 w-3.5 text-gray-400" />
+            <span className="hidden md:block text-sm font-medium text-ink">{displayName || 'User'}</span>
+            <ChevronDown className="hidden md:block h-3.5 w-3.5 text-ink-muted" />
           </button>
 
           {profileOpen && (
-            <div className="absolute right-0 mt-2 w-48 rounded-lg border border-gray-100 bg-white shadow-lg py-1 z-50">
-              <div className="px-3 py-2 border-b border-gray-100">
-                <p className="text-sm font-medium text-gray-900 truncate">{displayName || 'User'}</p>
-                <p className="text-xs text-gray-500 truncate">{user?.role}</p>
+            <div className="absolute right-0 mt-2 w-48 rounded-lg border border-border bg-surface shadow-lg py-1 z-50">
+              <div className="px-3 py-2 border-b border-border">
+                <p className="text-sm font-medium text-ink truncate">{displayName || 'User'}</p>
+                <p className="text-xs text-ink-muted truncate">{user?.role}</p>
               </div>
-              <button
-                onClick={logout}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-danger-600 hover:bg-danger-50"
-              >
-                <LogOut className="h-4 w-4" />
-                Log out
-              </button>
+              {/* Log out now lives in the sidebar's bottom utility row too —
+                  kept here as well since it's a conventional place to look
+                  for it, and removing it would be a behavior change beyond
+                  what was asked for. */}
             </div>
           )}
         </div>
@@ -203,7 +233,7 @@ function Navbar({ onOpenSidebar }) {
 
 function Footer() {
   return (
-    <footer className="shrink-0 flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-gray-100 px-4 lg:px-6 py-3 text-xs text-gray-400">
+    <footer className="shrink-0 flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-border px-4 lg:px-6 py-3 text-xs text-ink-muted">
       <p>© {new Date().getFullYear()} LFC Church Management System.</p>
       <p>v1.0.0</p>
     </footer>
@@ -211,6 +241,20 @@ function Footer() {
 }
 
 const SIDEBAR_COLLAPSED_KEY = 'lfc_sidebar_collapsed';
+const THEME_KEY = 'lfc_theme';
+
+function getInitialTheme() {
+  try {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === 'light' || saved === 'dark') return saved;
+  } catch {
+    // ignore storage errors — fall through to system preference
+  }
+  if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches) {
+    return 'dark';
+  }
+  return 'light';
+}
 
 export default function Layout() {
   const [collapsed, setCollapsed] = useState(() => {
@@ -221,6 +265,7 @@ export default function Layout() {
     }
   });
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [theme, setTheme] = useState(getInitialTheme);
 
   const handleSetCollapsed = useCallback((next) => {
     setCollapsed(next);
@@ -232,9 +277,31 @@ export default function Layout() {
     }
   }, []);
 
+  // Applies/removes the `.dark` class that index.css's @custom-variant and
+  // CSS-variable theme tokens key off of, and persists the choice.
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch {
+      // ignore storage errors — theme just won't persist across reloads
+    }
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
+  }, []);
+
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar collapsed={collapsed} setCollapsed={handleSetCollapsed} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
+    <div className="flex h-screen bg-bg">
+      <Sidebar
+        collapsed={collapsed}
+        setCollapsed={handleSetCollapsed}
+        mobileOpen={mobileOpen}
+        setMobileOpen={setMobileOpen}
+        theme={theme}
+        toggleTheme={toggleTheme}
+      />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Navbar onOpenSidebar={() => setMobileOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">

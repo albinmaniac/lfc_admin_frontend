@@ -5,6 +5,8 @@ import {
   Clock3,
   Bell,
   CalendarDays,
+  CalendarRange,
+  PartyPopper,
   Images,
   Users,
   Building2,
@@ -31,6 +33,8 @@ export const ROUTES = {
 
   NOTICES: '/notices',
   EVENTS: '/events',
+  FEASTS: '/feasts',
+  CALENDAR: '/calendar',
   GALLERY: '/gallery',
 
   REPORTS: '/reports',
@@ -76,6 +80,13 @@ export const PERMISSIONS = {
 // item; SUPERADMIN bypass is handled centrally in auth.jsx, not here.
 // Staff Management / Invitations have no matching PermissionChoices entry
 // on the backend, so they stay role-gated to SUPERADMIN only.
+//
+// Feasts and Calendar both reuse MANAGE_EVENTS — there is no separate
+// backend permission for either. Feasts are managed under the same gate as
+// Events (create/edit; delete stays SuperAdmin-only same as every other
+// module). Calendar is read-only for anyone who already has MANAGE_EVENTS,
+// since it's just a combined viewing surface over Events + Feasts data,
+// not its own manageable resource.
 // ---------------------------------------------------------------------------
 export const NAVIGATION = [
   {
@@ -90,6 +101,8 @@ export const NAVIGATION = [
       { label: 'Mass Timings', path: ROUTES.MASS_TIMINGS, permission: PERMISSIONS.MANAGE_PARISH, icon: Clock3 },
       { label: 'Notices', path: ROUTES.NOTICES, permission: PERMISSIONS.MANAGE_NOTICES, icon: Bell },
       { label: 'Events', path: ROUTES.EVENTS, permission: PERMISSIONS.MANAGE_EVENTS, icon: CalendarDays },
+      { label: 'Feasts', path: ROUTES.FEASTS, permission: PERMISSIONS.MANAGE_EVENTS, icon: PartyPopper },
+      { label: 'Calendar', path: ROUTES.CALENDAR, permission: PERMISSIONS.MANAGE_EVENTS, icon: CalendarRange },
       { label: 'Gallery', path: ROUTES.GALLERY, permission: PERMISSIONS.MANAGE_GALLERY, icon: Images },
     ],
   },

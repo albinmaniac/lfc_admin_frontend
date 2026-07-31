@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, X, Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Star, ChevronLeft, ChevronRight, Paperclip, CalendarDays, AlertTriangle } from 'lucide-react';
 import { communicationService } from '../services.js';
-import { PageHeader, DataTable, Badge, Switch, Button, Input, SummaryCard } from '../components.jsx';
+import { PageHeader, Badge, Switch, Button, Input, SummaryCard, formatDate } from '../components.jsx';
 import { PermissionGate } from '../auth.jsx';
 import { PERMISSIONS, ROLES } from '../constants.js';
 import { Megaphone } from 'lucide-react';
@@ -13,12 +13,22 @@ const NOTICE_TYPES = [
   'PRAYER_REQUEST', 'CATECHISM_NOTICE', 'YOUTH_NOTICE', 'EVENT_NOTICE', 'OTHER',
 ];
 
+const OPTIONAL_FIELDS = ['expiry_date'];
+
 const EMPTY_FORM = {
   title: '', notice_type: 'GENERAL', content: '',
   publish_date: '', expiry_date: '', is_public: true, is_featured: false,
 };
 
 const toLocalInput = (isoString) => (isoString ? isoString.slice(0, 16) : '');
+
+function getExpiryStatus(expiryDate) {
+  if (!expiryDate) return null;
+  const diffDays = (new Date(expiryDate) - new Date()) / (1000 * 60 * 60 * 24);
+  if (diffDays < 0) return 'expired';
+  if (diffDays <= 3) return 'soon';
+  return null;
+}
 
 function extractErrorMessage(err, fallback = 'Failed to save') {
   const data = err.response?.data;
@@ -39,7 +49,7 @@ export default function Notices() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState(''); // requires backend admin-view support — see note above
+  const [statusFilter, setStatusFilter] = useState('');
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -167,6 +177,10 @@ export default function Notices() {
     try {
       const formData = new FormData();
       Object.entries(form).forEach(([key, value]) => {
+        if (OPTIONAL_FIELDS.includes(key)) {
+          formData.append(key, value ?? '');
+          return;
+        }
         if (value !== '') formData.append(key, value);
       });
       if (attachmentFile) formData.append('attachment', attachmentFile);
@@ -191,37 +205,16 @@ export default function Notices() {
   const featuredCountOnPage = notices.filter((n) => n.is_featured).length;
   const hasActiveFilter = Boolean(search || typeFilter || statusFilter);
 
-  const columns = [
-    {
-      key: 'title',
-      header: 'Title',
-      render: (row) => (
-        <span className="font-medium text-gray-900 flex items-center gap-1.5">
-          {row.title}
-          {row.is_featured && <Star className="h-3.5 w-3.5 text-warning-500 fill-warning-500" />}
-        </span>
-      ),
-    },
-    { key: 'notice_type_display', header: 'Type' },
-    { key: 'publish_date', header: 'Published', render: (row) => new Date(row.publish_date).toLocaleDateString() },
-    { key: 'expiry_date', header: 'Expires', render: (row) => (row.expiry_date ? new Date(row.expiry_date).toLocaleDateString() : '—') },
-    { key: 'is_public', header: 'Visibility', render: (row) => <Badge variant={row.is_public ? 'primary' : 'gray'}>{row.is_public ? 'Public' : 'Internal'}</Badge> },
-    {
-      key: 'is_active',
-      header: 'Status',
-      render: (row) => (
-        <PermissionGate
-          permission={PERMISSIONS.MANAGE_NOTICES}
-          fallback={<Badge variant={row.is_active ? 'success' : 'gray'}>{row.is_active ? 'Active' : 'Inactive'}</Badge>}
-        >
-          <Switch checked={row.is_active} onChange={(next) => handleToggleActive(row, next)} />
-        </PermissionGate>
-      ),
-    },
-  ];
-
   return (
     <div>
+      <style>{`
+        @keyframes noticeFadeIn {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .notice-fade-in { animation: noticeFadeIn 0.35s ease-out both; }
+      `}</style>
+
       <PageHeader
         title="Notices"
         description="Manage church notices, announcements, and bulletins."
@@ -246,14 +239,14 @@ export default function Notices() {
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
         />
-        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm">
+        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="h-10 rounded-xl border border-border bg-surface text-ink px-3 text-sm">
           <option value="">All types</option>
           {NOTICE_TYPES.map((t) => (
             <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
           ))}
         </select>
         <PermissionGate permission={PERMISSIONS.MANAGE_NOTICES}>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm">
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-10 rounded-xl border border-border bg-surface text-ink px-3 text-sm">
             <option value="">All notices</option>
             <option value="true">Active only</option>
             <option value="false">Inactive only</option>
@@ -261,46 +254,106 @@ export default function Notices() {
         </PermissionGate>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={notices}
-        loading={loading}
-        emptyTitle={hasActiveFilter ? 'No matching notices' : 'No notices yet'}
-        emptyDescription={
-          hasActiveFilter
-            ? 'Try a different search term or filter.'
-            : 'Create your first notice to get started.'
-        }
-        rowActions={(row) => (
-          <div className="flex items-center justify-end gap-1">
-            <PermissionGate permission={PERMISSIONS.MANAGE_NOTICES}>
-              <button onClick={() => openEditModal(row)} className="h-8 w-8 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600" aria-label="Edit">
-                <Pencil className="h-4 w-4" />
-              </button>
-            </PermissionGate>
-            <PermissionGate role={ROLES.SUPERADMIN}>
-              <button onClick={() => handleDelete(row)} className="h-8 w-8 flex items-center justify-center rounded-md text-gray-400 hover:bg-danger-50 hover:text-danger-600" aria-label="Delete">
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </PermissionGate>
-          </div>
-        )}
-      />
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-52 bg-surface-2 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      ) : notices.length === 0 ? (
+        <div className="bg-surface border border-border rounded-2xl py-16 text-center">
+          <h3 className="text-sm font-semibold text-ink">
+            {hasActiveFilter ? 'No matching notices' : 'No notices yet'}
+          </h3>
+          <p className="text-sm text-ink-muted mt-1">
+            {hasActiveFilter ? 'Try a different search term or filter.' : 'Create your first notice to get started.'}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {notices.map((row, i) => {
+            const expiryStatus = getExpiryStatus(row.expiry_date);
+            return (
+              <div
+                key={row.id}
+                className="notice-fade-in bg-surface border border-border rounded-2xl p-4 hover:shadow-md transition-shadow flex flex-col"
+                style={{ animationDelay: `${i * 40}ms` }}
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <Badge variant="gray">{row.notice_type_display}</Badge>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {row.is_featured && <Star className="h-4 w-4 text-warning-500 fill-warning-500" />}
+                    {row.attachment && <Paperclip className="h-3.5 w-3.5 text-ink-muted" />}
+                  </div>
+                </div>
+
+                <h3 className="text-sm font-semibold text-ink mb-1.5 line-clamp-1">{row.title}</h3>
+                <p className="text-xs text-ink-muted line-clamp-2 flex-1">{row.content}</p>
+
+                <div className="flex items-center gap-1.5 text-xs text-ink-muted mt-3">
+                  <CalendarDays className="h-3.5 w-3.5" />
+                  <span>{formatDate(row.publish_date)}</span>
+                  {row.expiry_date && (
+                    <>
+                      <span className="text-ink-muted/60">→</span>
+                      <span className={expiryStatus ? 'text-danger-600 font-medium' : ''}>{formatDate(row.expiry_date)}</span>
+                    </>
+                  )}
+                </div>
+
+                {expiryStatus && (
+                  <div className={`flex items-center gap-1.5 mt-2 rounded-lg px-2.5 py-1.5 text-xs font-medium ${
+                    expiryStatus === 'expired' ? 'bg-danger-50 text-danger-600' : 'bg-warning-50 text-warning-700'
+                  }`}>
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    {expiryStatus === 'expired' ? 'Expired — still marked active' : 'Expiring within 3 days'}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant={row.is_public ? 'primary' : 'gray'}>{row.is_public ? 'Public' : 'Internal'}</Badge>
+                    <PermissionGate
+                      permission={PERMISSIONS.MANAGE_NOTICES}
+                      fallback={<Badge variant={row.is_active ? 'success' : 'gray'}>{row.is_active ? 'Active' : 'Inactive'}</Badge>}
+                    >
+                      <Switch checked={row.is_active} onChange={(next) => handleToggleActive(row, next)} />
+                    </PermissionGate>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <PermissionGate permission={PERMISSIONS.MANAGE_NOTICES}>
+                      <button onClick={() => openEditModal(row)} className="h-7 w-7 flex items-center justify-center rounded-md text-ink-muted hover:bg-surface-2 hover:text-ink" aria-label="Edit">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                    </PermissionGate>
+                    <PermissionGate role={ROLES.SUPERADMIN}>
+                      <button onClick={() => handleDelete(row)} className="h-7 w-7 flex items-center justify-center rounded-md text-ink-muted hover:bg-danger-50 hover:text-danger-600" aria-label="Delete">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </PermissionGate>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {(pageInfo.next || pageInfo.previous) && (
-        <div className="flex items-center justify-between mt-3">
+        <div className="flex items-center justify-between mt-4">
           <button
             onClick={() => goToPage(pageInfo.previous)}
             disabled={!pageInfo.previous || loading}
-            className="flex items-center gap-1 text-sm text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:text-gray-900"
+            className="flex items-center gap-1 text-sm text-ink-muted disabled:opacity-40 disabled:cursor-not-allowed hover:text-ink"
           >
             <ChevronLeft className="h-4 w-4" /> Previous
           </button>
-          <span className="text-xs text-gray-400">{pageInfo.count} total</span>
+          <span className="text-xs text-ink-muted">{pageInfo.count} total</span>
           <button
             onClick={() => goToPage(pageInfo.next)}
             disabled={!pageInfo.next || loading}
-            className="flex items-center gap-1 text-sm text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:text-gray-900"
+            className="flex items-center gap-1 text-sm text-ink-muted disabled:opacity-40 disabled:cursor-not-allowed hover:text-ink"
           >
             Next <ChevronRight className="h-4 w-4" />
           </button>
@@ -309,23 +362,23 @@ export default function Notices() {
 
       {modalOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 py-8 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-lg my-auto">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h3 className="text-base font-semibold text-gray-900">{editingId ? 'Edit Notice' : 'Create Notice'}</h3>
-              <button onClick={() => setModalOpen(false)} className="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100">
+          <div className="bg-surface rounded-2xl shadow-lg w-full max-w-lg my-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h3 className="text-base font-semibold text-ink">{editingId ? 'Edit Notice' : 'Create Notice'}</h3>
+              <button onClick={() => setModalOpen(false)} className="h-7 w-7 flex items-center justify-center rounded-md text-ink-muted hover:bg-surface-2">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <form onSubmit={handleSave} className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Title</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Title</label>
                 <Input type="text" name="title" required value={form.title} onChange={handleFormChange} />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Notice Type</label>
-                <select name="notice_type" value={form.notice_type} onChange={handleFormChange} className="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm">
+                <label className="block text-sm font-medium text-ink mb-1.5">Notice Type</label>
+                <select name="notice_type" value={form.notice_type} onChange={handleFormChange} className="w-full h-10 rounded-xl border border-border bg-surface text-ink px-3 text-sm">
                   {NOTICE_TYPES.map((t) => (
                     <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
                   ))}
@@ -333,44 +386,44 @@ export default function Notices() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Content</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Content</label>
                 <textarea
                   name="content"
                   required
                   value={form.content}
                   onChange={handleFormChange}
                   rows={4}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
+                  className="w-full rounded-xl border border-border bg-surface text-ink px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-strong"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Publish Date</label>
+                  <label className="block text-sm font-medium text-ink mb-1.5">Publish Date</label>
                   <Input type="datetime-local" name="publish_date" required value={form.publish_date} onChange={handleFormChange} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Expiry Date <span className="text-gray-400">(optional)</span>
+                  <label className="block text-sm font-medium text-ink mb-1.5">
+                    Expiry Date <span className="text-ink-muted">(optional)</span>
                   </label>
                   <Input type="datetime-local" name="expiry_date" value={form.expiry_date} onChange={handleFormChange} />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Attachment <span className="text-gray-400">(optional)</span>
+                <label className="block text-sm font-medium text-ink mb-1.5">
+                  Attachment <span className="text-ink-muted">(optional)</span>
                 </label>
-                <input type="file" onChange={(e) => setAttachmentFile(e.target.files[0])} className="text-sm" />
+                <input type="file" onChange={(e) => setAttachmentFile(e.target.files[0])} className="text-sm text-ink" />
               </div>
 
               <div className="flex gap-6">
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input type="checkbox" name="is_public" checked={form.is_public} onChange={handleFormChange} className="rounded border-gray-300" />
+                <label className="flex items-center gap-2 text-sm text-ink">
+                  <input type="checkbox" name="is_public" checked={form.is_public} onChange={handleFormChange} className="rounded border-border" />
                   Public
                 </label>
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input type="checkbox" name="is_featured" checked={form.is_featured} onChange={handleFormChange} className="rounded border-gray-300" />
+                <label className="flex items-center gap-2 text-sm text-ink">
+                  <input type="checkbox" name="is_featured" checked={form.is_featured} onChange={handleFormChange} className="rounded border-border" />
                   Featured
                 </label>
               </div>
@@ -386,4 +439,3 @@ export default function Notices() {
     </div>
   );
 }
-

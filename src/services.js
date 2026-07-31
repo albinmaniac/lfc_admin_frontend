@@ -172,6 +172,25 @@ export const communicationService = {
   getUpcomingEvents: () => api.get('/events/upcoming/'),
   /** GET /events/featured/ */
   getFeaturedEvents: () => api.get('/events/featured/'),
+
+  // Feasts
+  /** GET /events/feasts/ — optional { search } query params. */
+  getFeasts: (params, config) => api.get('/events/feasts/', { params, ...config }),
+  /** POST /events/feasts/ — FormData (cover_image upload). */
+  createFeast: (formData) => api.post('/events/feasts/', formData),
+  /** GET /events/feasts/:id/ */
+  getFeast: (id) => api.get(`/events/feasts/${id}/`),
+  /** PATCH /events/feasts/:id/ — FormData (cover_image upload). */
+  updateFeast: (id, formData) => api.patch(`/events/feasts/${id}/`, formData),
+  /** DELETE /events/feasts/:id/ — SuperAdmin only, backend-enforced. */
+  deleteFeast: (id) => api.delete(`/events/feasts/${id}/`),
+  /** GET /events/feasts/featured/ */
+  getFeaturedFeasts: () => api.get('/events/feasts/featured/'),
+
+  // Calendar (read-only combined feed of events + feasts)
+  /** GET /events/calendar/?month=X&year=Y */
+  getCalendar: (month, year, config) => api.get('/events/calendar/', { params: { month, year }, ...config }),
+  
 };
 
 // ---------------------------------------------------------------------------

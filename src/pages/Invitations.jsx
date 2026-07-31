@@ -112,7 +112,7 @@ export default function Invitations() {
   const acceptedCountOnPage = invitations.filter((i) => i.status === 'ACCEPTED').length;
 
   const columns = [
-    { key: 'email', header: 'Email', render: (row) => <span className="font-medium text-gray-900">{row.email}</span> },
+    { key: 'email', header: 'Email', render: (row) => <span className="font-medium text-ink">{row.email}</span> },
     { key: 'role', header: 'Role', render: (row) => row.role.replace(/_/g, ' ') },
     { key: 'status', header: 'Status', render: (row) => <Badge variant={STATUS_BADGE[row.status]}>{row.status}</Badge> },
     { key: 'invited_by_name', header: 'Invited By', render: (row) => row.invited_by_name || '—' },
@@ -144,14 +144,14 @@ export default function Invitations() {
             <div className="flex items-center justify-end gap-1">
               <button
                 onClick={() => handleResend(row)}
-                className="h-8 w-8 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-primary-600"
+                className="h-8 w-8 flex items-center justify-center rounded-md text-ink-muted hover:bg-surface-2 hover:text-accent-ink"
                 aria-label="Resend"
               >
                 <RotateCcw className="h-4 w-4" />
               </button>
               <button
                 onClick={() => handleCancel(row)}
-                className="h-8 w-8 flex items-center justify-center rounded-md text-gray-400 hover:bg-danger-50 hover:text-danger-600"
+                className="h-8 w-8 flex items-center justify-center rounded-md text-ink-muted hover:bg-danger-50 hover:text-danger-600"
                 aria-label="Cancel"
               >
                 <Ban className="h-4 w-4" />
@@ -166,15 +166,15 @@ export default function Invitations() {
           <button
             onClick={() => goToPage(pageInfo.previous)}
             disabled={!pageInfo.previous || loading}
-            className="flex items-center gap-1 text-sm text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:text-gray-900"
+            className="flex items-center gap-1 text-sm text-ink-muted disabled:opacity-40 disabled:cursor-not-allowed hover:text-ink"
           >
             <ChevronLeft className="h-4 w-4" /> Previous
           </button>
-          <span className="text-xs text-gray-400">{pageInfo.count} total</span>
+          <span className="text-xs text-ink-muted">{pageInfo.count} total</span>
           <button
             onClick={() => goToPage(pageInfo.next)}
             disabled={!pageInfo.next || loading}
-            className="flex items-center gap-1 text-sm text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:text-gray-900"
+            className="flex items-center gap-1 text-sm text-ink-muted disabled:opacity-40 disabled:cursor-not-allowed hover:text-ink"
           >
             Next <ChevronRight className="h-4 w-4" />
           </button>
@@ -183,17 +183,17 @@ export default function Invitations() {
 
       {modalOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-sm">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h3 className="text-base font-semibold text-gray-900">Send Invitation</h3>
-              <button onClick={() => setModalOpen(false)} className="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100">
+          <div className="bg-surface rounded-2xl shadow-lg w-full max-w-sm">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h3 className="text-base font-semibold text-ink">Send Invitation</h3>
+              <button onClick={() => setModalOpen(false)} className="h-7 w-7 flex items-center justify-center rounded-md text-ink-muted hover:bg-surface-2">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <form onSubmit={handleSend} className="p-5 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Email</label>
                 <Input
                   type="email"
                   required
@@ -204,11 +204,11 @@ export default function Invitations() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Role</label>
                 <select
                   value={form.role}
                   onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}
-                  className="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm"
+                  className="w-full h-10 rounded-xl border border-border bg-surface text-ink px-3 text-sm"
                 >
                   {ROLE_OPTIONS.map((r) => (
                     <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>

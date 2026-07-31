@@ -139,10 +139,13 @@ export default function ChurchSettings() {
     try {
       const formData = new FormData();
       Object.entries(form).forEach(([key, value]) => {
-        if (value === '') return;
-        // Trim URL fields specifically — stray whitespace from copy-paste
-        // is a common source of a URLField failing validation silently.
-        const finalValue = URL_FIELDS.includes(key) ? String(value).trim() : value;
+        // Only `name` is actually required (enforced by the input's
+        // `required` attribute). Every other field here is optional per
+        // the backend — so instead of skipping empty values (which
+        // silently prevented ever clearing a previously-set field via
+        // PATCH), we always send every field, trimming URL fields along
+        // the way.
+        const finalValue = URL_FIELDS.includes(key) ? String(value ?? '').trim() : (value ?? '');
         formData.append(key, finalValue);
       });
       if (logoFile) formData.append('logo', logoFile);
@@ -151,9 +154,6 @@ export default function ChurchSettings() {
       await parishService.updateParishSettings(formData);
       toast.success('Church settings updated');
 
-      // Reload from the backend rather than trusting local form state —
-      // picks up any server-side normalization (e.g. trimmed values,
-      // computed fields) and gives fresh logo/cover URLs for the previews.
       setLogoFile(null);
       setCoverFile(null);
       await loadSettings();
@@ -168,9 +168,9 @@ export default function ChurchSettings() {
     return (
       <div>
         <PageHeader title="Church Settings" description="Configure parish identity, contact details, and public presence." />
-        <div className="bg-white border border-gray-100 rounded-xl p-6 space-y-3">
+        <div className="bg-surface border border-border rounded-2xl shadow-sm p-6 space-y-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-10 bg-gray-100 rounded-lg animate-pulse" />
+            <div key={i} className="h-10 bg-surface-2 rounded-xl animate-pulse" />
           ))}
         </div>
       </div>
@@ -185,14 +185,16 @@ export default function ChurchSettings() {
         actions={<Button type="submit" loading={saving}>Save Settings</Button>}
       />
 
-      <div className="flex items-center gap-1 mb-4 border-b border-gray-200">
+      <div className="flex items-center gap-1 mb-4 border-b border-border">
         {TABS.map((tab) => (
           <button
             key={tab.key}
             type="button"
             onClick={() => setActiveTab(tab.key)}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              activeTab === tab.key ? 'border-primary-600 text-primary-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+              activeTab === tab.key
+                ? 'border-accent-strong text-ink dark:text-accent-strong'
+                : 'border-transparent text-ink-muted hover:text-ink'
             }`}
           >
             {tab.label}
@@ -200,77 +202,77 @@ export default function ChurchSettings() {
         ))}
       </div>
 
-      <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-4">
+      <div className="bg-surface border border-border rounded-2xl shadow-sm p-5 space-y-4">
         {activeTab === 'general' && (
           <>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Church Name</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Church Name</label>
                 <Input type="text" name="name" required value={form.name} onChange={handleChange} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Diocese</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Diocese</label>
                 <Input type="text" name="diocese" value={form.diocese} onChange={handleChange} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Patron Saint</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Patron Saint</label>
                 <Input type="text" name="patron_saint" value={form.patron_saint} onChange={handleChange} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Established Year</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Established Year</label>
                 <Input type="number" name="established_year" value={form.established_year} onChange={handleChange} placeholder="e.g. 1965" />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Address</label>
+              <label className="block text-sm font-medium text-ink mb-1.5">Address</label>
               <textarea
                 name="address"
                 value={form.address}
                 onChange={handleChange}
                 rows={2}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500"
+                className="w-full rounded-xl border border-border bg-surface text-ink px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-strong"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Phone</label>
                 <Input type="text" name="phone" value={form.phone} onChange={handleChange} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Email</label>
                 <Input type="email" name="email" value={form.email} onChange={handleChange} />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Website</label>
+              <label className="block text-sm font-medium text-ink mb-1.5">Website</label>
               <Input type="url" name="website" value={form.website} onChange={handleChange} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Logo <span className="text-gray-400">(max {MAX_IMAGE_SIZE_MB}MB)</span>
+                <label className="block text-sm font-medium text-ink mb-1.5">
+                  Logo <span className="text-ink-muted">(max {MAX_IMAGE_SIZE_MB}MB)</span>
                 </label>
                 {logoUrl && !logoFile && (
                   <div className="flex items-center gap-2 mb-2">
-                    <img src={logoUrl} alt="Current logo" className="h-12 w-12 rounded-lg object-cover border border-gray-100" />
-                    <span className="text-xs text-gray-500">Current logo</span>
+                    <img src={logoUrl} alt="Current logo" className="h-12 w-12 rounded-xl object-cover border border-border" />
+                    <span className="text-xs text-ink-muted">Current logo</span>
                   </div>
                 )}
-                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleLogoChange} className="text-sm" />
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleLogoChange} className="text-sm text-ink file:text-ink" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Cover Image <span className="text-gray-400">(max {MAX_IMAGE_SIZE_MB}MB)</span>
+                <label className="block text-sm font-medium text-ink mb-1.5">
+                  Cover Image <span className="text-ink-muted">(max {MAX_IMAGE_SIZE_MB}MB)</span>
                 </label>
                 {coverUrl && !coverFile && (
                   <div className="flex items-center gap-2 mb-2">
-                    <img src={coverUrl} alt="Current cover" className="h-12 w-20 rounded-lg object-cover border border-gray-100" />
-                    <span className="text-xs text-gray-500">Current cover</span>
+                    <img src={coverUrl} alt="Current cover" className="h-12 w-20 rounded-xl object-cover border border-border" />
+                    <span className="text-xs text-ink-muted">Current cover</span>
                   </div>
                 )}
-                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleCoverChange} className="text-sm" />
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleCoverChange} className="text-sm text-ink file:text-ink" />
               </div>
             </div>
           </>
@@ -280,21 +282,21 @@ export default function ChurchSettings() {
           <>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Office Phone</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Office Phone</label>
                 <Input type="text" name="office_phone" value={form.office_phone} onChange={handleChange} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Office Email</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Office Email</label>
                 <Input type="email" name="office_email" value={form.office_email} onChange={handleChange} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Opening Time</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Opening Time</label>
                 <Input type="time" name="office_open_time" value={form.office_open_time} onChange={handleChange} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Closing Time</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Closing Time</label>
                 <Input type="time" name="office_close_time" value={form.office_close_time} onChange={handleChange} />
               </div>
             </div>
@@ -304,23 +306,23 @@ export default function ChurchSettings() {
         {activeTab === 'social' && (
           <>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Google Maps URL</label>
+              <label className="block text-sm font-medium text-ink mb-1.5">Google Maps URL</label>
               <Input type="url" name="google_map_url" value={form.google_map_url} onChange={handleChange} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Facebook URL</label>
+              <label className="block text-sm font-medium text-ink mb-1.5">Facebook URL</label>
               <Input type="url" name="facebook_url" value={form.facebook_url} onChange={handleChange} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Instagram URL</label>
+              <label className="block text-sm font-medium text-ink mb-1.5">Instagram URL</label>
               <Input type="url" name="instagram_url" value={form.instagram_url} onChange={handleChange} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">YouTube URL</label>
+              <label className="block text-sm font-medium text-ink mb-1.5">YouTube URL</label>
               <Input type="url" name="youtube_url" value={form.youtube_url} onChange={handleChange} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">WhatsApp URL</label>
+              <label className="block text-sm font-medium text-ink mb-1.5">WhatsApp URL</label>
               <Input type="url" name="whatsapp_url" value={form.whatsapp_url} onChange={handleChange} />
             </div>
           </>
@@ -329,16 +331,16 @@ export default function ChurchSettings() {
         {activeTab === 'about' && (
           <>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">History</label>
-              <textarea name="history" value={form.history} onChange={handleChange} rows={4} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500" />
+              <label className="block text-sm font-medium text-ink mb-1.5">History</label>
+              <textarea name="history" value={form.history} onChange={handleChange} rows={4} className="w-full rounded-xl border border-border bg-surface text-ink px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-strong" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Mission</label>
-              <textarea name="mission" value={form.mission} onChange={handleChange} rows={3} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500" />
+              <label className="block text-sm font-medium text-ink mb-1.5">Mission</label>
+              <textarea name="mission" value={form.mission} onChange={handleChange} rows={3} className="w-full rounded-xl border border-border bg-surface text-ink px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-strong" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Vision</label>
-              <textarea name="vision" value={form.vision} onChange={handleChange} rows={3} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500" />
+              <label className="block text-sm font-medium text-ink mb-1.5">Vision</label>
+              <textarea name="vision" value={form.vision} onChange={handleChange} rows={3} className="w-full rounded-xl border border-border bg-surface text-ink px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-strong" />
             </div>
           </>
         )}

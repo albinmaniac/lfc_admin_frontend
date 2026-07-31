@@ -1,5 +1,5 @@
 import axios from 'axios';
-
+console.log(import.meta.env.VITE_API_BASE_URL);
 const RAW_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://lfc-backend.onrender.com/api/';
 // Normalize away a trailing slash so URL concatenation below never produces
 // a double slash regardless of how VITE_API_BASE_URL is set.

@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, X, Home, Users, Crown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Home, Users, Crown, Phone, ChevronLeft, ChevronRight } from 'lucide-react';
 import { familiesService } from '../services.js';
-import { PageHeader, DataTable, Badge, Switch, Button, Input, SummaryCard } from '../components.jsx';
+import { PageHeader, Badge, Switch, Button, Input, SummaryCard } from '../components.jsx';
 import { PermissionGate } from '../auth.jsx';
 import { PERMISSIONS, ROLES } from '../constants.js';
 import api from '../api.js';
@@ -10,14 +10,11 @@ import api from '../api.js';
 const EMPTY_FORM = { family_unit_name: '', saint: '', phone_number: '', is_active: true };
 
 export default function FamilyUnits() {
-  // Pagination is now stored fully (count/next/previous/results), not just
-  // a bare array — DRF paginates this endpoint, so `units` only ever holds
-  // the current page.
   const [units, setUnits] = useState([]);
   const [pageInfo, setPageInfo] = useState({ count: 0, next: null, previous: null });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState(''); // '', 'true', 'false'
+  const [statusFilter, setStatusFilter] = useState('');
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -34,7 +31,6 @@ export default function FamilyUnits() {
   const [leadershipLoading, setLeadershipLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
 
-  // Guards against setState after unmount (e.g. navigating away mid-request).
   const mountedRef = useRef(true);
   useEffect(() => {
     mountedRef.current = true;
@@ -43,9 +39,6 @@ export default function FamilyUnits() {
     };
   }, []);
 
-  // Cancels a stale in-flight search when a newer one is fired before the
-  // previous one resolves — prevents an old, slow response from overwriting
-  // newer, faster results (classic race condition on fast typing).
   const abortRef = useRef(null);
 
   const fetchUnits = useCallback((url = null) => {
@@ -72,14 +65,12 @@ export default function FamilyUnits() {
           setUnits(data.results);
           setPageInfo({ count: data.count ?? 0, next: data.next ?? null, previous: data.previous ?? null });
         } else {
-          // Backend not paginating this response (shouldn't happen given
-          // StandardPagination, but stay defensive).
           setUnits(data);
           setPageInfo({ count: data.length, next: null, previous: null });
         }
       })
       .catch((err) => {
-        if (err.name === 'CanceledError' || err.name === 'AbortError') return; // expected on rapid typing
+        if (err.name === 'CanceledError' || err.name === 'AbortError') return;
         if (!mountedRef.current) return;
         toast.error('Could not load family units');
       })
@@ -99,9 +90,6 @@ export default function FamilyUnits() {
   };
 
   const handleToggleActive = async (row, nextValue) => {
-    // Optimistic UI update for instant feedback, then always refetch from
-    // the server afterward (point 2) so pagination/counts/derived fields
-    // stay authoritative rather than hand-patched client-side.
     setUnits((prev) => prev.map((u) => (u.id === row.id ? { ...u, is_active: nextValue } : u)));
     try {
       await familiesService.updateFamilyUnit(row.id, { is_active: nextValue });
@@ -229,77 +217,21 @@ export default function FamilyUnits() {
     setFamilyMembers([]);
   };
 
-  // NOTE: activeCount and totalFamilies below reflect only the CURRENT
-  // PAGE of results, not the whole dataset — an honest limitation of
-  // paginated data without a dedicated backend stats endpoint. `pageInfo
-  // .count` (used for "Total Units") is the one number here that's fully
-  // accurate regardless of pagination, since DRF returns it independent of
-  // page size.
   const activeCountOnPage = units.filter((u) => u.is_active).length;
   const totalFamiliesOnPage = units.reduce((sum, u) => sum + (u.family_count || 0), 0);
 
   const hasActiveFilter = Boolean(search || statusFilter);
 
-  const columns = [
-    {
-      key: 'family_unit_name',
-      header: 'Unit Name',
-      render: (row) => (
-        <div className="flex items-center gap-2.5">
-          {row.saint_photo_url ? (
-            <img src={row.saint_photo_url} alt="" className="h-8 w-8 rounded-full object-cover shrink-0" />
-          ) : (
-            <div className="h-8 w-8 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center shrink-0">
-              <Home className="h-4 w-4" />
-            </div>
-          )}
-          <div>
-            <p className="font-medium text-gray-900">{row.family_unit_name}</p>
-            <p className="text-xs text-gray-400">{row.saint}</p>
-          </div>
-        </div>
-      ),
-    },
-    { key: 'family_count', header: 'Families', render: (row) => row.family_count ?? 0 },
-    {
-      key: 'president_name',
-      header: 'President',
-      render: (row) => (
-        <PermissionGate permission={PERMISSIONS.MANAGE_FAMILY_UNITS} fallback={<span>{row.president_name || '—'}</span>}>
-          <button onClick={() => openLeadershipPicker(row, 'president')} className="text-primary-600 hover:underline text-left">
-            {row.president_name || 'Assign...'}
-          </button>
-        </PermissionGate>
-      ),
-    },
-    {
-      key: 'secretary_name',
-      header: 'Secretary',
-      render: (row) => (
-        <PermissionGate permission={PERMISSIONS.MANAGE_FAMILY_UNITS} fallback={<span>{row.secretary_name || '—'}</span>}>
-          <button onClick={() => openLeadershipPicker(row, 'secretary')} className="text-primary-600 hover:underline text-left">
-            {row.secretary_name || 'Assign...'}
-          </button>
-        </PermissionGate>
-      ),
-    },
-    { key: 'phone_number', header: 'Phone', render: (row) => row.phone_number || '—' },
-    {
-      key: 'is_active',
-      header: 'Status',
-      render: (row) => (
-        <PermissionGate
-          permission={PERMISSIONS.MANAGE_FAMILY_UNITS}
-          fallback={<Badge variant={row.is_active ? 'success' : 'danger'}>{row.is_active ? 'Active' : 'Inactive'}</Badge>}
-        >
-          <Switch checked={row.is_active} onChange={(next) => handleToggleActive(row, next)} />
-        </PermissionGate>
-      ),
-    },
-  ];
-
   return (
     <div>
+      <style>{`
+        @keyframes unitFadeIn {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .unit-fade-in { animation: unitFadeIn 0.35s ease-out both; }
+      `}</style>
+
       <PageHeader
         title="Family Units"
         description="Manage geographical parish groupings and their leadership."
@@ -328,7 +260,7 @@ export default function FamilyUnits() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm"
+            className="h-10 rounded-xl border border-border bg-surface text-ink px-3 text-sm"
           >
             <option value="">All units</option>
             <option value="true">Active only</option>
@@ -337,46 +269,121 @@ export default function FamilyUnits() {
         </PermissionGate>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={units}
-        loading={loading}
-        emptyTitle={hasActiveFilter ? 'No matching family units' : 'No family units yet'}
-        emptyDescription={
-          hasActiveFilter
-            ? 'Try a different search term or filter.'
-            : 'Create your first family unit to start organizing families.'
-        }
-        rowActions={(row) => (
-          <div className="flex items-center justify-end gap-1">
-            <PermissionGate permission={PERMISSIONS.MANAGE_FAMILY_UNITS}>
-              <button onClick={() => openEditModal(row)} className="h-8 w-8 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600" aria-label="Edit">
-                <Pencil className="h-4 w-4" />
-              </button>
-            </PermissionGate>
-            <PermissionGate role={ROLES.SUPERADMIN}>
-              <button onClick={() => handleDelete(row)} className="h-8 w-8 flex items-center justify-center rounded-md text-gray-400 hover:bg-danger-50 hover:text-danger-600" aria-label="Delete">
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </PermissionGate>
-          </div>
-        )}
-      />
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-64 bg-surface-2 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      ) : units.length === 0 ? (
+        <div className="bg-surface border border-border rounded-2xl py-16 text-center">
+          <h3 className="text-sm font-semibold text-ink">
+            {hasActiveFilter ? 'No matching family units' : 'No family units yet'}
+          </h3>
+          <p className="text-sm text-ink-muted mt-1">
+            {hasActiveFilter ? 'Try a different search term or filter.' : 'Create your first family unit to start organizing families.'}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {units.map((row, i) => (
+            <div
+              key={row.id}
+              className="unit-fade-in bg-surface border border-border rounded-2xl p-4 hover:border-accent-strong/50 transition-colors flex flex-col"
+              style={{ animationDelay: `${i * 40}ms` }}
+            >
+              <div className="flex items-start justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {row.saint_photo_url ? (
+                    <img src={row.saint_photo_url} alt="" className="h-11 w-11 rounded-full object-cover shrink-0" />
+                  ) : (
+                    <div className="h-11 w-11 rounded-full bg-accent text-accent-ink flex items-center justify-center shrink-0">
+                      <Home className="h-5 w-5" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="font-semibold text-ink truncate">{row.family_unit_name}</p>
+                    <p className="text-xs text-ink-muted truncate">{row.saint}</p>
+                  </div>
+                </div>
+                <Badge variant={row.is_active ? 'success' : 'gray'}>{row.is_active ? 'Active' : 'Inactive'}</Badge>
+              </div>
+
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-1.5 rounded-xl bg-accent/20 px-3 py-1.5 text-xs font-medium text-accent-ink">
+                  <Users className="h-3.5 w-3.5" />
+                  {row.family_count ?? 0} {row.family_count === 1 ? 'family' : 'families'}
+                </div>
+              </div>
+
+              <div className="space-y-1.5 mb-3 flex-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5 text-ink-muted">
+                    <Crown className="h-3.5 w-3.5 text-warning-500" /> President
+                  </span>
+                  <PermissionGate permission={PERMISSIONS.MANAGE_FAMILY_UNITS} fallback={<span className="text-ink font-medium">{row.president_name || '—'}</span>}>
+                    <button onClick={() => openLeadershipPicker(row, 'president')} className="font-medium text-accent-strong hover:underline">
+                      {row.president_name || 'Assign...'}
+                    </button>
+                  </PermissionGate>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5 text-ink-muted">
+                    <Crown className="h-3.5 w-3.5 text-ink-muted" /> Secretary
+                  </span>
+                  <PermissionGate permission={PERMISSIONS.MANAGE_FAMILY_UNITS} fallback={<span className="text-ink font-medium">{row.secretary_name || '—'}</span>}>
+                    <button onClick={() => openLeadershipPicker(row, 'secretary')} className="font-medium text-accent-strong hover:underline">
+                      {row.secretary_name || 'Assign...'}
+                    </button>
+                  </PermissionGate>
+                </div>
+                {row.phone_number && (
+                  <div className="flex items-center gap-1.5 text-xs text-ink-muted">
+                    <Phone className="h-3.5 w-3.5" /> {row.phone_number}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-border">
+                <PermissionGate
+                  permission={PERMISSIONS.MANAGE_FAMILY_UNITS}
+                  fallback={<span className="text-xs text-ink-muted">—</span>}
+                >
+                  <Switch checked={row.is_active} onChange={(next) => handleToggleActive(row, next)} label="Active" />
+                </PermissionGate>
+
+                <div className="flex items-center gap-1">
+                  <PermissionGate permission={PERMISSIONS.MANAGE_FAMILY_UNITS}>
+                    <button onClick={() => openEditModal(row)} className="h-7 w-7 flex items-center justify-center rounded-md text-ink-muted hover:bg-accent/20 hover:text-accent-ink" aria-label="Edit">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  </PermissionGate>
+                  <PermissionGate role={ROLES.SUPERADMIN}>
+                    <button onClick={() => handleDelete(row)} className="h-7 w-7 flex items-center justify-center rounded-md text-ink-muted hover:bg-danger-50 hover:text-danger-600" aria-label="Delete">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </PermissionGate>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {(pageInfo.next || pageInfo.previous) && (
-        <div className="flex items-center justify-between mt-3">
+        <div className="flex items-center justify-between mt-4">
           <button
             onClick={() => goToPage(pageInfo.previous)}
             disabled={!pageInfo.previous || loading}
-            className="flex items-center gap-1 text-sm text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:text-gray-900"
+            className="flex items-center gap-1 text-sm text-ink-muted disabled:opacity-40 disabled:cursor-not-allowed hover:text-ink"
           >
             <ChevronLeft className="h-4 w-4" /> Previous
           </button>
-          <span className="text-xs text-gray-400">{pageInfo.count} total</span>
+          <span className="text-xs text-ink-muted">{pageInfo.count} total</span>
           <button
             onClick={() => goToPage(pageInfo.next)}
             disabled={!pageInfo.next || loading}
-            className="flex items-center gap-1 text-sm text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:text-gray-900"
+            className="flex items-center gap-1 text-sm text-ink-muted disabled:opacity-40 disabled:cursor-not-allowed hover:text-ink"
           >
             Next <ChevronRight className="h-4 w-4" />
           </button>
@@ -385,55 +392,55 @@ export default function FamilyUnits() {
 
       {modalOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 py-8 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md my-auto">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h3 className="text-base font-semibold text-gray-900">{editingId ? 'Edit Family Unit' : 'Create Family Unit'}</h3>
-              <button onClick={() => setModalOpen(false)} className="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100">
+          <div className="bg-surface border border-border rounded-2xl shadow-lg w-full max-w-md my-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h3 className="text-base font-semibold text-ink">{editingId ? 'Edit Family Unit' : 'Create Family Unit'}</h3>
+              <button onClick={() => setModalOpen(false)} className="h-7 w-7 flex items-center justify-center rounded-md text-ink-muted hover:bg-surface-2">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <form onSubmit={handleSave} className="p-5 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Unit Name</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Unit Name</label>
                 <Input type="text" name="family_unit_name" required value={form.family_unit_name} onChange={handleFormChange} placeholder="e.g. St. Jude's East" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Patron Saint</label>
+                <label className="block text-sm font-medium text-ink mb-1.5">Patron Saint</label>
                 <Input type="text" name="saint" required value={form.saint} onChange={handleFormChange} placeholder="e.g. St. Jude" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Phone Number <span className="text-gray-400">(optional)</span>
+                <label className="block text-sm font-medium text-ink mb-1.5">
+                  Phone Number <span className="text-ink-muted">(optional)</span>
                 </label>
                 <Input type="text" name="phone_number" value={form.phone_number} onChange={handleFormChange} placeholder="+91 98200 12345" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Saint Photo <span className="text-gray-400">(optional)</span>
+                <label className="block text-sm font-medium text-ink mb-1.5">
+                  Saint Photo <span className="text-ink-muted">(optional)</span>
                 </label>
-                <input type="file" accept="image/*" onChange={(e) => setPhotoFile(e.target.files[0])} className="text-sm" />
+                <input type="file" accept="image/*" onChange={(e) => setPhotoFile(e.target.files[0])} className="text-sm text-ink" />
               </div>
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input type="checkbox" name="is_active" checked={form.is_active} onChange={handleFormChange} className="rounded border-gray-300" />
+              <label className="flex items-center gap-2 text-sm text-ink">
+                <input type="checkbox" name="is_active" checked={form.is_active} onChange={handleFormChange} className="rounded border-border accent-accent-strong" />
                 Active
               </label>
 
               {editingId ? (
-                <div className="space-y-2 border border-gray-100 rounded-lg p-3">
+                <div className="space-y-2 border border-border rounded-xl p-3 bg-accent/10">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-gray-500">President</p>
-                      <p className="text-sm font-medium text-gray-900">{editingUnit?.president_name || 'Not assigned'}</p>
+                      <p className="text-xs text-ink-muted">President</p>
+                      <p className="text-sm font-medium text-ink">{editingUnit?.president_name || 'Not assigned'}</p>
                     </div>
                     <Button type="button" variant="secondary" size="sm" onClick={() => openLeadershipPicker(editingUnit, 'president')}>
                       {editingUnit?.president_name ? 'Change' : 'Assign'}
                     </Button>
                   </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                  <div className="flex items-center justify-between pt-2 border-t border-border">
                     <div>
-                      <p className="text-xs text-gray-500">Secretary</p>
-                      <p className="text-sm font-medium text-gray-900">{editingUnit?.secretary_name || 'Not assigned'}</p>
+                      <p className="text-xs text-ink-muted">Secretary</p>
+                      <p className="text-sm font-medium text-ink">{editingUnit?.secretary_name || 'Not assigned'}</p>
                     </div>
                     <Button type="button" variant="secondary" size="sm" onClick={() => openLeadershipPicker(editingUnit, 'secretary')}>
                       {editingUnit?.secretary_name ? 'Change' : 'Assign'}
@@ -441,7 +448,7 @@ export default function FamilyUnits() {
                   </div>
                 </div>
               ) : (
-                <p className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2">
+                <p className="text-xs text-ink-muted bg-surface-2 rounded-xl px-3 py-2">
                   President and Secretary can be assigned after this unit is created — save it first, then reopen it for editing.
                 </p>
               )}
@@ -457,20 +464,20 @@ export default function FamilyUnits() {
 
       {leadershipUnit && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] px-4 py-8 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md my-auto">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div className="bg-surface border border-border rounded-2xl shadow-lg w-full max-w-md my-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <div className="flex items-center gap-2">
                 {selectedFamily && (
-                  <button onClick={() => { setSelectedFamily(null); setFamilyMembers([]); }} className="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100">
+                  <button onClick={() => { setSelectedFamily(null); setFamilyMembers([]); }} className="h-7 w-7 flex items-center justify-center rounded-md text-ink-muted hover:bg-surface-2">
                     <ChevronLeft className="h-4 w-4" />
                   </button>
                 )}
-                <h3 className="text-base font-semibold text-gray-900 flex items-center gap-1.5">
+                <h3 className="text-base font-semibold text-ink flex items-center gap-1.5">
                   <Crown className="h-4 w-4 text-warning-500" />
                   Assign {leadershipRole === 'president' ? 'President' : 'Secretary'}
                 </h3>
               </div>
-              <button onClick={closeLeadershipPicker} className="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100">
+              <button onClick={closeLeadershipPicker} className="h-7 w-7 flex items-center justify-center rounded-md text-ink-muted hover:bg-surface-2">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -478,19 +485,19 @@ export default function FamilyUnits() {
             <div className="p-5 max-h-[60vh] overflow-y-auto">
               {!selectedFamily ? (
                 <>
-                  <p className="text-xs text-gray-500 mb-3">Step 1 — choose a family in {leadershipUnit.family_unit_name}</p>
+                  <p className="text-xs text-ink-muted mb-3">Step 1 — choose a family in {leadershipUnit.family_unit_name}</p>
                   {leadershipLoading ? (
                     <div className="space-y-2">
-                      {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-11 bg-gray-100 rounded-lg animate-pulse" />)}
+                      {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-11 bg-surface-2 rounded-xl animate-pulse" />)}
                     </div>
                   ) : unitFamilies.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-8">This unit has no families yet.</p>
+                    <p className="text-sm text-ink-muted text-center py-8">This unit has no families yet.</p>
                   ) : (
                     <div className="space-y-1.5">
                       {unitFamilies.map((f) => (
-                        <button key={f.id} onClick={() => selectFamily(f)} className="w-full text-left px-3 py-2.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm">
-                          <p className="font-medium text-gray-900">{f.house_name}</p>
-                          <p className="text-xs text-gray-400">Ward {f.ward_number}</p>
+                        <button key={f.id} onClick={() => selectFamily(f)} className="w-full text-left px-3 py-2.5 rounded-xl border border-border hover:bg-accent/15 hover:border-accent-strong/40 transition-colors text-sm">
+                          <p className="font-medium text-ink">{f.house_name}</p>
+                          <p className="text-xs text-ink-muted">Ward {f.ward_number}</p>
                         </button>
                       ))}
                     </div>
@@ -498,23 +505,23 @@ export default function FamilyUnits() {
                 </>
               ) : (
                 <>
-                  <p className="text-xs text-gray-500 mb-3">Step 2 — choose a member from {selectedFamily.house_name}</p>
+                  <p className="text-xs text-ink-muted mb-3">Step 2 — choose a member from {selectedFamily.house_name}</p>
                   {leadershipLoading ? (
                     <div className="space-y-2">
-                      {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-11 bg-gray-100 rounded-lg animate-pulse" />)}
+                      {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-11 bg-surface-2 rounded-xl animate-pulse" />)}
                     </div>
                   ) : familyMembers.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-8">This family has no members yet.</p>
+                    <p className="text-sm text-ink-muted text-center py-8">This family has no members yet.</p>
                   ) : (
                     <div className="space-y-1.5">
                       {familyMembers.map((m) => (
-                        <button key={m.id} onClick={() => assignLeader(m)} disabled={assigning} className="w-full flex items-center gap-2.5 text-left px-3 py-2.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm disabled:opacity-50">
-                          <div className="h-7 w-7 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-semibold shrink-0">
+                        <button key={m.id} onClick={() => assignLeader(m)} disabled={assigning} className="w-full flex items-center gap-2.5 text-left px-3 py-2.5 rounded-xl border border-border hover:bg-accent/15 hover:border-accent-strong/40 transition-colors text-sm disabled:opacity-50">
+                          <div className="h-8 w-8 rounded-full bg-accent text-accent-ink flex items-center justify-center text-xs font-semibold shrink-0">
                             {m.first_name?.charAt(0)?.toUpperCase()}
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">{m.first_name} {m.last_name}</p>
-                            <p className="text-xs text-gray-400">{m.relationship_display}</p>
+                            <p className="font-medium text-ink">{m.first_name} {m.last_name}</p>
+                            <p className="text-xs text-ink-muted">{m.relationship_display}</p>
                           </div>
                         </button>
                       ))}
