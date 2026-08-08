@@ -51,8 +51,12 @@ export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const displayName = user
-    ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || user.email || 'User'
-    : '';
+  ? user.full_name?.trim() ||
+    `${user.first_name || ''} ${user.last_name || ''}`.trim() ||
+    user.username ||
+    user.email ||
+    'User'
+  : '';
 
   const [summary, setSummary] = useState(null);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
