@@ -398,8 +398,8 @@ function MembershipChart({ loading, rows }) {
                     <defs>
                       {layers.map((l) => (
                         <linearGradient key={l.id} id={`groupSpikeGradient-${l.id}`} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#4f8ff0" stopOpacity={l.stops[0]} />
-                          <stop offset="100%" stopColor="#1a3a6b" stopOpacity={l.stops[1]} />
+                          <stop offset="0%" stopColor="#d2f04f" stopOpacity={l.stops[0]} />
+                          <stop offset="100%" stopColor="#53a91e" stopOpacity={l.stops[1]} />
                         </linearGradient>
                       ))}
                     </defs>
