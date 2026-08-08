@@ -36,27 +36,21 @@ function getItemDescription(item, fallback) {
   return item?.description || item?.details || item?.body || item?.summary || item?.message || fallback;
 }
 
-// Recharts needs actual color values (SVG fill/stroke), not Tailwind class
-// names — but CSS custom properties work fine here, so these reference the
-// same --accent-strong/--border/--ink-muted tokens from index.css and flip
-// automatically with the .dark class, same as everything else on the page.
-// The two extra pie slices use fixed olive-grays (not theme tokens) since
-// the palette only has one accent hue (lime) and a 4-slice donut needs more
-// distinct values than that alone provides.
+// Recharts receives actual CSS custom-property values so chart colors stay
+// synchronized with the application's light/dark theme.
 const CHART_ACTIVE = 'var(--accent-strong)';
 const CHART_TOTAL = 'var(--border)';
-const PIE_COLORS = ['var(--accent-strong)', 'var(--accent)', '#8A8C7E', '#4E5044'];
+const PIE_COLORS = [
+  'var(--accent-strong)',
+  'var(--accent)',
+  'var(--ink-muted)',
+  'var(--border)',
+];
 
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const displayName = user
-  ? user.full_name?.trim() ||
-    `${user.first_name || ''} ${user.last_name || ''}`.trim() ||
-    user.username ||
-    user.email ||
-    'User'
-  : '';
+  const displayName = user?.full_name?.trim() || user?.email || 'User';
 
   const [summary, setSummary] = useState(null);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
@@ -180,8 +174,8 @@ export default function Dashboard() {
       </section>
 
       {errorType ? (
-        <div className="rounded-2xl border border-warning-500/30 bg-warning-50 p-5">
-          <p className="mb-3 text-sm text-warning-700">{ERROR_MESSAGES[errorType]}</p>
+        <div className="rounded-2xl border border-border bg-surface p-5">
+          <p className="mb-3 text-sm text-ink">{ERROR_MESSAGES[errorType]}</p>
           <Button variant="secondary" size="sm" icon={RotateCcw} onClick={fetchDashboardData}>
             Retry
           </Button>
@@ -224,14 +218,10 @@ export default function Dashboard() {
                           background: 'var(--surface)',
                           color: 'var(--ink)',
                         }}
-                        formatter={(value, name) => [
-                          <span style={{ color: 'var(--accent-strong)', fontWeight: 600 }}>
-                            {`${name}: ${value}`}
-                          </span>,
-                          
-                        ]}
+                        itemStyle={{ color: 'var(--ink)' }}
+                        labelStyle={{ color: 'var(--ink)', fontWeight: 600 }}
                       />
-                      <Bar dataKey="total" name="Total" fill={CHART_TOTAL} radius={[6, 6, 0, 0]} color = 'var(--ink)' />
+                      <Bar dataKey="total" name="Total" fill={CHART_TOTAL} radius={[6, 6, 0, 0]} />
                       <Bar dataKey="active" name="Active" fill={CHART_ACTIVE} radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>

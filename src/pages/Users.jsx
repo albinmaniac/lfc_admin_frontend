@@ -34,14 +34,13 @@ const STATUS_OPTIONS = [
 
 const PAGE_SIZE = 20;
 
-// Real backend role values. Colors are literal hex (not Tailwind gray-100/
-// blue-100 etc.) since those break in dark mode — same pattern used for
-// chart color palettes elsewhere in the app.
+// Real backend role values. Colors use theme tokens so role badges remain
+// readable in both light and dark modes.
 const ROLE_META = {
   SUPERADMIN: { label: "Super Admin", icon: Crown, color: "var(--accent-strong)" },
-  STAFF: { label: "Staff", icon: Briefcase, color: "#C99A3D" },
-  GROUP_LEADER: { label: "Group Leader", icon: UsersIcon, color: "#2F7566" },
-  FAMILY_UNIT_PRESIDENT: { label: "Family Unit President", icon: Home, color: "#8B3F63" },
+  STAFF: { label: "Staff", icon: Briefcase, color: "var(--warning-strong)" },
+  GROUP_LEADER: { label: "Group Leader", icon: UsersIcon, color: "var(--success-strong)" },
+  FAMILY_UNIT_PRESIDENT: { label: "Family Unit President", icon: Home, color: "var(--danger-strong)" },
 };
 
 function getRoleBadge(role) {

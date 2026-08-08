@@ -275,7 +275,7 @@ function InvitationsTab() {
 // Recent Users / Disabled Accounts (shared columns, different endpoints)
 // ---------------------------------------------------------------------------
 const userColumns = [
-  { key: 'name', header: 'Name', render: (r) => `${r.first_name} ${r.last_name}`.trim() },
+  { key: 'name', header: 'Name', render: (r) => r.full_name || r.email || '—' },
   { key: 'email', header: 'Email' },
   { key: 'role', header: 'Role', render: (r) => formatEnumLabel(r.role) },
   { key: 'phone_number', header: 'Phone', render: (r) => r.phone_number || '—' },
@@ -283,7 +283,7 @@ const userColumns = [
   { key: 'is_active', header: 'Status', render: (r) => <Badge variant={r.is_active ? 'success' : 'danger'}>{r.is_active ? 'Active' : 'Disabled'}</Badge> },
   { key: 'date_joined', header: 'Joined', render: (r) => formatDate(r.date_joined) },
 ];
-const userSearch = (row, q) => [row.first_name, row.last_name, row.email].some((v) => v?.toLowerCase().includes(q));
+const userSearch = (row, q) => [row.full_name, row.email].some((v) => v?.toLowerCase().includes(q));
 
 function RecentUsersTab() {
   const { filtered, loading, errorType, refetch, search, setSearch } = useSearchedReport(

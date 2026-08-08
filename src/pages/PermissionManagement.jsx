@@ -151,10 +151,9 @@ export default function PermissionManagement() {
   };
 
   const filteredUsers = users.filter((u) => {
-    const q = search.toLowerCase();
+    const q = search.trim().toLowerCase();
     return (
-      u.first_name?.toLowerCase().includes(q) ||
-      u.last_name?.toLowerCase().includes(q) ||
+      u.full_name?.toLowerCase().includes(q) ||
       u.email?.toLowerCase().includes(q)
     );
   });
@@ -222,11 +221,11 @@ export default function PermissionManagement() {
                     }`}
                   >
                     <div className="h-9 w-9 rounded-full bg-accent text-accent-ink flex items-center justify-center text-xs font-semibold shrink-0">
-                      {u.first_name?.charAt(0)?.toUpperCase()}
+                      {u.full_name?.trim()?.charAt(0)?.toUpperCase() || u.email?.charAt(0)?.toUpperCase() || '?'}
                     </div>
                     <div className="min-w-0">
                       <p className={`text-sm font-medium truncate ${active ? 'text-accent-ink' : 'text-ink'}`}>
-                        {u.first_name} {u.last_name}
+                        {u.full_name || u.email}
                       </p>
                       <p className="text-xs text-ink-muted truncate">{u.role.replace(/_/g, ' ')}</p>
                     </div>
@@ -271,10 +270,10 @@ export default function PermissionManagement() {
               <>
                 <div className="flex items-center gap-3 mb-5 pb-5 border-b border-border">
                   <div className="h-11 w-11 rounded-full bg-accent text-accent-ink flex items-center justify-center text-sm font-semibold">
-                    {selectedUser.first_name?.charAt(0)?.toUpperCase()}
+                    {selectedUser.full_name?.trim()?.charAt(0)?.toUpperCase() || selectedUser.email?.charAt(0)?.toUpperCase() || '?'}
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-ink">{selectedUser.first_name} {selectedUser.last_name}</p>
+                    <p className="text-sm font-semibold text-ink">{selectedUser.full_name || selectedUser.email}</p>
                     <p className="text-xs text-ink-muted">{selectedUser.email} — {selectedUser.role.replace(/_/g, ' ')}</p>
                   </div>
                 </div>
