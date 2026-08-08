@@ -261,7 +261,17 @@ export default function Dashboard() {
                           <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', fontSize: 13, background: 'var(--surface)', color: 'var(--ink)' }} />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: 12,
+                          border: '1px solid var(--border)',
+                          fontSize: 13,
+                          background: 'var(--surface)',
+                          color: 'var(--ink)',
+                        }}
+                        itemStyle={{ color: 'var(--ink)' }}
+                        labelStyle={{ color: 'var(--ink)', fontWeight: 600 }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
@@ -273,14 +283,20 @@ export default function Dashboard() {
 
               <div className="mt-2 space-y-2">
                 {contentMixData.map((entry, index) => (
-                  <div key={entry.name} className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-2 text-ink-muted">
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }} />
+                  <div
+                    key={entry.name}
+                    className="flex min-w-0 items-center justify-between gap-3 text-sm"
+                  >
+                    <span className="flex min-w-0 items-center gap-2 text-ink">
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-border"
+                        style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}
+                      />
                       {entry.name}
                     </span>
-                    <span className="font-medium text-ink">
+                    <span className="shrink-0 font-medium text-ink">
                       {entry.value}
-                      <span className="ml-1 text-xs text-ink-muted">
+                      <span className="ml-1 text-xs font-normal text-ink-muted">
                         ({contentMixTotal ? Math.round((entry.value / contentMixTotal) * 100) : 0}%)
                       </span>
                     </span>
