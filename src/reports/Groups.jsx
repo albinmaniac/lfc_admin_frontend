@@ -6,13 +6,12 @@ import { ReportTable, ReportFilter, Badge, Button, formatDate } from '../compone
 import { RotateCcw, Users, Crown, TrendingUp, Layers, Download, ChevronDown } from 'lucide-react';
 import {
   ResponsiveContainer,
-  BarChart,
-  Bar,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
   CartesianGrid,
-  Cell,
 } from 'recharts';
 import { useReportData, ERROR_MESSAGES } from './hooks';
 
@@ -281,8 +280,6 @@ function LeadersTab() {
 // ---------------------------------------------------------------------------
 // Statistics — redesigned as chart + summary chips
 // ---------------------------------------------------------------------------
-const BAR_COLORS = ['#C99A3D', '#2F7566', '#8B3F63', '#4A5FA8', '#B0552C', '#4E6E58'];
-
 function StatCard({ icon: Icon, label, value, loading, delay }) {
   return (
     <div
@@ -302,8 +299,74 @@ function StatCard({ icon: Icon, label, value, loading, delay }) {
   );
 }
 
+// Builds one jagged "spike" layer across an arbitrary list of {name, value}
+// rows: sharp rise to each row's value, sharp fall toward a shallow valley
+// before the next rise. Different `scale` (height), `shift` (horizontal
+// offset of the peak) and `valleyRatio` (how far each dip drops) per layer
+// produces the layered, echoing mountain-range look.
+function buildSpikeLayer(rows, scale, shift, valleyRatio) {
+  const pts = [{ x: -0.35, y: 0 }];
+  rows.forEach((r, i) => {
+    const peakX = i + shift;
+    const isFirst = i === 0;
+    const isLast = i === rows.length - 1;
+    pts.push({ x: peakX - 0.28, y: isFirst ? 0 : r.value * scale * valleyRatio });
+    pts.push({ x: peakX, y: r.value * scale });
+    pts.push({ x: peakX + 0.28, y: isLast ? r.value * scale * 0.55 : r.value * scale * valleyRatio });
+  });
+  return pts;
+}
+
+function niceTicks(maxValue) {
+  const top = Math.max(5, Math.ceil((maxValue * 1.15) / 5) * 5);
+  return [0, top * 0.25, top * 0.5, top * 0.75, top].map((v) => Math.round(v));
+}
+
+function MembershipChartTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  const { name, value } = payload[0].payload;
+  return (
+    <div
+      style={{
+        background: 'rgba(24, 38, 66, 0.92)',
+        backdropFilter: 'blur(6px)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 14,
+        padding: '12px 16px',
+        boxShadow: '0 16px 36px rgba(0,0,0,0.4)',
+      }}
+    >
+      <div style={{ color: '#fff', fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{name}</div>
+      <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>
+        {value} {value === 1 ? 'member' : 'members'}
+      </div>
+    </div>
+  );
+}
+
+function MembershipGlowDot({ cx, cy }) {
+  if (cx == null || cy == null) return null;
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={10} fill="#4f8ff0" opacity={0.25} />
+      <circle cx={cx} cy={cy} r={5} fill="#4f8ff0" stroke="#fff" strokeWidth={2} />
+    </g>
+  );
+}
+
 function MembershipChart({ loading, rows }) {
-  // Compact, horizontally scrollable bar chart for group membership
+  const cursorData = useMemo(() => rows.map((r, i) => ({ x: i, name: r.name, value: r.value })), [rows]);
+  const layers = useMemo(
+    () => [
+      { id: 'front', data: buildSpikeLayer(rows, 1, 0, 0.02), stops: [0.95, 0.55] },
+      { id: 'mid', data: buildSpikeLayer(rows, 0.72, 0.14, 0.14), stops: [0.55, 0.22] },
+      { id: 'back', data: buildSpikeLayer(rows, 0.48, -0.12, 0.22), stops: [0.32, 0.08] },
+    ],
+    [rows]
+  );
+  const maxValue = rows.length ? Math.max(...rows.map((r) => r.value)) : 0;
+  const yTicks = niceTicks(maxValue || 1);
+
   return (
     <div className="report-card rounded-2xl border border-border bg-surface p-4" style={{ animationDelay: '80ms' }}>
       <h3 className="text-sm font-semibold text-ink">Membership by group</h3>
@@ -322,88 +385,87 @@ function MembershipChart({ loading, rows }) {
           <div className="overflow-x-auto pb-1">
             <div
               style={{
-                height: 250,
-                width: Math.max(520, rows.length * 88),
+                background: '#0a1120',
+                borderRadius: 20,
+                padding: '20px 16px 6px',
+                width: Math.max(560, rows.length * 90),
                 minWidth: '100%',
               }}
             >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={rows}
-                  margin={{ top: 12, right: 20, left: 0, bottom: 34 }}
-                  barCategoryGap="20%"
-                >
-                  <defs>
-                    {BAR_COLORS.map((color, i) => (
-                      <linearGradient key={i} id={`groupBarGradient-${i}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={color} stopOpacity={0.98} />
-                        <stop offset="100%" stopColor={color} stopOpacity={0.58} />
-                      </linearGradient>
-                    ))}
-                  </defs>
-                  <CartesianGrid
-                    vertical={false}
-                    stroke="var(--ui-border)"
-                    strokeDasharray="4 5"
-                    opacity={0.7}
-                  />
-                  <XAxis
-                    dataKey="name"
-                    tickLine={false}
-                    axisLine={false}
-                    interval={0}
-                    tick={{ fontSize: 11, fill: 'var(--ink-muted)' }}
-                    angle={-35}
-                    textAnchor="end"
-                    height={58}
-                  />
-                  <YAxis
-                    allowDecimals={false}
-                    tickLine={false}
-                    axisLine={false}
-                    width={28}
-                    tick={{ fontSize: 11, fill: 'var(--ink-muted)' }}
-                  />
-                  <Tooltip
-                    cursor={{ fill: 'color-mix(in srgb, var(--ink) 5%, transparent)' }}
-                    content={({ active, payload }) => {
-                      if (!active || !payload?.length) return null;
-                      const item = payload[0].payload;
-                      return (
-                        <div
-                          style={{
-                            background: 'var(--surface)',
-                            border: '1px solid var(--ui-border)',
-                            borderRadius: 14,
-                            padding: '10px 13px',
-                            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.18)',
-                            fontSize: 12,
-                            color: 'var(--ink)',
-                          }}
-                        >
-                          <div style={{ fontWeight: 700, marginBottom: 3 }}>{item.name}</div>
-                          <div style={{ color: 'var(--ink-muted)' }}>
-                            {item.value} {item.value === 1 ? 'member' : 'members'}
-                          </div>
-                        </div>
-                      );
-                    }}
-                  />
-                  <Bar
-                    dataKey="value"
-                    radius={[8, 8, 2, 2]}
-                    maxBarSize={34}
-                    animationDuration={700}
-                  >
-                    {rows.map((d, i) => (
-                      <Cell
-                        key={d.key}
-                        fill={`url(#groupBarGradient-${i % BAR_COLORS.length})`}
+              <div style={{ width: '100%', height: 280 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={cursorData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                    <defs>
+                      {layers.map((l) => (
+                        <linearGradient key={l.id} id={`groupSpikeGradient-${l.id}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#4f8ff0" stopOpacity={l.stops[0]} />
+                          <stop offset="100%" stopColor="#1a3a6b" stopOpacity={l.stops[1]} />
+                        </linearGradient>
+                      ))}
+                    </defs>
+
+                    <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.12)" strokeDasharray="3 6" />
+
+                    <XAxis
+                      type="number"
+                      dataKey="x"
+                      domain={[-0.35, rows.length - 1 + 0.35]}
+                      ticks={rows.map((_, i) => i)}
+                      tickFormatter={(v) => rows[v]?.name ?? ''}
+                      axisLine={false}
+                      tickLine={false}
+                      interval={0}
+                      angle={-35}
+                      textAnchor="end"
+                      height={54}
+                      tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 11 }}
+                    />
+                    <YAxis
+                      type="number"
+                      domain={[0, yTicks[yTicks.length - 1]]}
+                      ticks={yTicks}
+                      allowDecimals={false}
+                      axisLine={false}
+                      tickLine={false}
+                      width={32}
+                      tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 11 }}
+                    />
+
+                    <Tooltip
+                      cursor={{ stroke: '#4f8ff0', strokeWidth: 1.5, strokeDasharray: '4 4' }}
+                      content={<MembershipChartTooltip />}
+                    />
+
+                    {/* Visual layers — purely decorative, not tied to the tooltip */}
+                    {layers.map((l) => (
+                      <Area
+                        key={l.id}
+                        data={l.data}
+                        dataKey="y"
+                        type="linear"
+                        stroke="none"
+                        fill={`url(#groupSpikeGradient-${l.id})`}
+                        isAnimationActive={false}
+                        dot={false}
+                        activeDot={false}
                       />
                     ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+
+                    {/* Invisible cursor series — real per-group values, drives
+                        the dashed guide line, tooltip, and glowing active dot */}
+                    <Area
+                      data={cursorData}
+                      dataKey="value"
+                      type="linear"
+                      stroke="none"
+                      fill="none"
+                      isAnimationActive={false}
+                      dot={false}
+                      activeDot={<MembershipGlowDot />}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
         )}
