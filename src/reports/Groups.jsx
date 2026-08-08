@@ -330,10 +330,23 @@ function MembershipChart({ loading, rows }) {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={rows}
-                  margin={{ top: 8, right: 16, left: 0, bottom: 28 }}
-                  barCategoryGap="24%"
+                  margin={{ top: 12, right: 20, left: 0, bottom: 34 }}
+                  barCategoryGap="20%"
                 >
-                  <CartesianGrid vertical={false} stroke="var(--ui-border)" strokeDasharray="3 3" />
+                  <defs>
+                    {BAR_COLORS.map((color, i) => (
+                      <linearGradient key={i} id={`groupBarGradient-${i}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={color} stopOpacity={0.98} />
+                        <stop offset="100%" stopColor={color} stopOpacity={0.58} />
+                      </linearGradient>
+                    ))}
+                  </defs>
+                  <CartesianGrid
+                    vertical={false}
+                    stroke="var(--ui-border)"
+                    strokeDasharray="4 5"
+                    opacity={0.7}
+                  />
                   <XAxis
                     dataKey="name"
                     tickLine={false}
@@ -342,7 +355,7 @@ function MembershipChart({ loading, rows }) {
                     tick={{ fontSize: 11, fill: 'var(--ink-muted)' }}
                     angle={-35}
                     textAnchor="end"
-                    height={52}
+                    height={58}
                   />
                   <YAxis
                     allowDecimals={false}
@@ -352,7 +365,7 @@ function MembershipChart({ loading, rows }) {
                     tick={{ fontSize: 11, fill: 'var(--ink-muted)' }}
                   />
                   <Tooltip
-                    cursor={{ fill: 'color-mix(in srgb, var(--ink) 6%, transparent)' }}
+                    cursor={{ fill: 'color-mix(in srgb, var(--ink) 5%, transparent)' }}
                     content={({ active, payload }) => {
                       if (!active || !payload?.length) return null;
                       const item = payload[0].payload;
@@ -361,13 +374,14 @@ function MembershipChart({ loading, rows }) {
                           style={{
                             background: 'var(--surface)',
                             border: '1px solid var(--ui-border)',
-                            borderRadius: 12,
-                            padding: '8px 12px',
+                            borderRadius: 14,
+                            padding: '10px 13px',
+                            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.18)',
                             fontSize: 12,
                             color: 'var(--ink)',
                           }}
                         >
-                          <div style={{ fontWeight: 600 }}>{item.name}</div>
+                          <div style={{ fontWeight: 700, marginBottom: 3 }}>{item.name}</div>
                           <div style={{ color: 'var(--ink-muted)' }}>
                             {item.value} {item.value === 1 ? 'member' : 'members'}
                           </div>
@@ -375,9 +389,17 @@ function MembershipChart({ loading, rows }) {
                       );
                     }}
                   />
-                  <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={32}>
+                  <Bar
+                    dataKey="value"
+                    radius={[8, 8, 2, 2]}
+                    maxBarSize={34}
+                    animationDuration={700}
+                  >
                     {rows.map((d, i) => (
-                      <Cell key={d.key} fill={BAR_COLORS[i % BAR_COLORS.length]} />
+                      <Cell
+                        key={d.key}
+                        fill={`url(#groupBarGradient-${i % BAR_COLORS.length})`}
+                      />
                     ))}
                   </Bar>
                 </BarChart>
