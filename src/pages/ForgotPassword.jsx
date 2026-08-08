@@ -168,9 +168,12 @@ const ForgotPassword = () => {
                   <p className="mb-6 text-center text-sm text-ink-muted md:text-left">
                     If an account exists with this email address, we've sent a password reset link. Please check your inbox and spam folder.
                   </p>
-                  <Button as={Link} to="/login" className="h-12 w-full rounded-full">
+                  <Link
+                    to="/login"
+                    className="inline-flex h-12 w-full items-center justify-center rounded-full bg-accent-strong px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-accent-strong/40"
+                  >
                     Back to Login
-                  </Button>
+                  </Link>
                 </div>
               )}
             </div>
