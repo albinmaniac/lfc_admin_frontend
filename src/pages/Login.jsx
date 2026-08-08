@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { ArrowRight, Church, Lock, Mail } from 'lucide-react';
 import { useAuth } from '../auth.jsx';
@@ -139,9 +139,12 @@ export default function Login() {
                     <input type="checkbox" className="h-4 w-4 rounded border-border text-accent-strong focus:ring-accent-strong" />
                     Remember me
                   </label>
-                  <a href="#" className="font-medium text-ink hover:opacity-80">
+                  <Link
+                    to="/forgot-password"
+                    className="font-medium text-ink transition-opacity hover:opacity-80"
+                  >
                     Forgot password?
-                  </a>
+                  </Link>
                 </div>
 
                 <Button
@@ -158,7 +161,7 @@ export default function Login() {
               </form>
 
               <p className="mt-6 text-center text-sm text-ink-muted">
-                Trouble signing in? <a href="#" className="font-medium text-ink">Contact the office</a>
+                Trouble signing in? <span className="font-medium text-ink">Contact the parish office</span>
               </p>
             </div>
           </div>

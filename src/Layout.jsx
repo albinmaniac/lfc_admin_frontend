@@ -1,16 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
-import { Menu, X, Search, LogOut, ChevronDown, ChevronLeft, Sun, Moon } from 'lucide-react';
-import { NAVIGATION, ROLES } from './constants.js';
+import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom';
+import { Menu, X, Search, LogOut, ChevronDown, ChevronLeft, Sun, Moon, Mail, Copy, User as UserIcon } from 'lucide-react';
+import { FaInstagram, FaLinkedin, FaFacebook } from 'react-icons/fa';
+import { NAVIGATION, ROLES, ROUTES } from './constants.js';
 import { useAuth, usePermission, useHasRole } from './auth.jsx';
+import { parishService } from './services.js';
+import ColorBends from './components/ColorBends.jsx';
 
-// Mirrors the exact bypass predicate usePermission/useHasRole use internally
-// (SuperAdmin bypass, null permission = always allowed, otherwise membership
-// check) — used here only to decide whether a whole NAV GROUP has anything
-// visible in it, so we can skip rendering its header entirely. The actual
-// per-item gating enforcement still happens in NavItem via the real hooks;
-// this is a read-only mirror for a layout decision, not a second source of
-// permission truth.
 function isItemAllowed(user, permission, role) {
   const userRole = user?.role ?? null;
   const userPermissions = user?.permissions ?? [];
@@ -50,8 +46,6 @@ function NavGroup({ group, collapsed, onNavigate }) {
   const roleOk = !group.role || user?.role === group.role;
   const visibleItems = group.items ? group.items.filter((item) => isItemAllowed(user, item.permission, item.role)) : null;
 
-  // Skip rendering entirely if the group's own role gate fails, or if it has
-  // an items list and none of them would actually be visible.
   if (!roleOk) return null;
   if (visibleItems && visibleItems.length === 0) return null;
 
@@ -71,11 +65,9 @@ function NavGroup({ group, collapsed, onNavigate }) {
   );
 }
 
-// Flat, solid sidebar — no blur, no gradients, no SVG. Matches the
-// reference: rounded logo mark, pill-highlighted active nav item, utility
-// row (theme toggle + log out) pinned to the bottom.
-function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen, theme, toggleTheme }) {
+function Sidebar({ parish, collapsed, setCollapsed, mobileOpen, setMobileOpen, theme, toggleTheme }) {
   const { logout } = useAuth();
+  const parishLogo = parish?.logo_url || null;
 
   return (
     <>
@@ -91,14 +83,25 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen, theme, to
         } ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         <div className="h-14 flex items-center justify-between px-4 border-b border-border shrink-0">
-          {!collapsed && (
-            <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-accent-ink text-xs font-bold">
-                L
-              </span>
+          <div className="flex items-center gap-2">
+            <span className={`flex items-center justify-center ${collapsed ? 'h-10 w-10' : 'h-7 w-7'} rounded-lg`}>
+              {parishLogo ? (
+                <img
+                  src={parishLogo}
+                  alt={parish?.name}
+                  className={`${collapsed ? "h-10 w-10" : "h-12 w-12"} object-contain`}
+                  loading="eager"
+                />
+              ) : (
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-accent-ink text-xs font-bold">
+                  L
+                </span>
+              )}
+            </span>
+            {!collapsed && (
               <span className="font-semibold tracking-tight text-ink">LFC Church</span>
-            </div>
-          )}
+            )}
+          </div>
           <button
             onClick={() => setCollapsed(!collapsed)}
             className="hidden lg:flex h-7 w-7 items-center justify-center rounded-md text-ink-muted hover:bg-surface-2 hover:text-ink"
@@ -126,10 +129,6 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen, theme, to
           ))}
         </nav>
 
-        {/* Utility row — theme toggle + log out, pinned to the bottom like
-            the reference's Help/Log Out block. "Help" was left out since
-            there's no real help page behind it yet — a dead link isn't
-            better UI just because the reference had one. */}
         <div className="border-t border-border px-3 py-3 space-y-1 shrink-0">
           <button
             onClick={toggleTheme}
@@ -156,12 +155,12 @@ function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen, theme, to
   );
 }
 
-function Navbar({ onOpenSidebar }) {
-  const { user } = useAuth();
+function Navbar({ onOpenSidebar, parish }) {
+  const { user, logout } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef(null);
+  const navigate = useNavigate();
 
-  // Click-outside to close the profile dropdown.
   useEffect(() => {
     function handleClickOutside(e) {
       if (profileRef.current && !profileRef.current.contains(e.target)) {
@@ -172,10 +171,25 @@ function Navbar({ onOpenSidebar }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fallback chain: full name -> username -> email -> "User".
   const displayName = user
-    ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || user.email || 'User'
+    ? user.full_name || user.username || user.email || 'User'
     : '';
+  const userInitial = displayName ? displayName.charAt(0).toUpperCase() : 'U';
+  const userEmail = user?.email || '';
+  const userRole = user?.role || '';
+  const profilePhoto = user?.profile_photo || null;
+
+  const now = new Date();
+  const formattedDate = new Intl.DateTimeFormat(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: '2-digit',
+    year: 'numeric',
+  }).format(now);
+  const formattedTime = now.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 
   return (
     <header className="h-14 shrink-0 flex items-center gap-3 border-b border-border bg-surface px-4 lg:px-6">
@@ -191,14 +205,11 @@ function Navbar({ onOpenSidebar }) {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-muted" />
         <input
           type="text"
-          placeholder="Search..."
-          className="w-full h-9 rounded-lg border border-border bg-surface-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-strong focus-visible:bg-surface"
+          placeholder="Global search (Coming soon)"
+          className="w-full h-9 rounded-lg border border-border bg-surface-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted focus-visible:outline-none opacity-60 cursor-not-allowed"
+          disabled
         />
       </div>
-
-      {/* Notifications hidden until a real notification backend/endpoint
-          exists — showing a bell with a badge implied unread activity that
-          was never real. */}
 
       <div className="ml-auto flex items-center gap-2 shrink-0" ref={profileRef}>
         <div className="relative">
@@ -206,23 +217,121 @@ function Navbar({ onOpenSidebar }) {
             onClick={() => setProfileOpen((o) => !o)}
             className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-surface-2"
           >
-            <div className="h-7 w-7 rounded-full bg-accent text-accent-ink flex items-center justify-center text-xs font-semibold shrink-0">
-              {displayName ? displayName.charAt(0).toUpperCase() : 'U'}
-            </div>
+            {profilePhoto ? (
+              <img
+                src={profilePhoto}
+                alt={displayName}
+                className="h-7 w-7 rounded-full object-cover shrink-0"
+              />
+            ) : (
+              <div className="h-7 w-7 rounded-full bg-accent text-accent-ink flex items-center justify-center text-xs font-semibold shrink-0">
+                {userInitial}
+              </div>
+            )}
             <span className="hidden md:block text-sm font-medium text-ink">{displayName || 'User'}</span>
             <ChevronDown className="hidden md:block h-3.5 w-3.5 text-ink-muted" />
           </button>
 
           {profileOpen && (
-            <div className="absolute right-0 mt-2 w-48 rounded-lg border border-border bg-surface shadow-lg py-1 z-50">
-              <div className="px-3 py-2 border-b border-border">
-                <p className="text-sm font-medium text-ink truncate">{displayName || 'User'}</p>
-                <p className="text-xs text-ink-muted truncate">{user?.role}</p>
+            <div className="absolute right-0 mt-2 w-[360px] rounded-3xl shadow-2xl z-50 border border-border overflow-hidden bg-surface">
+              {/* Decorative animated band — the effect lives here only,
+                  contained by relative+isolate (the fix Login was missing),
+                  so it can't bleed into or fight with the content below. */}
+              <div className="relative isolate h-24 overflow-hidden">
+                <div className="absolute inset-0 -z-10">
+                  <ColorBends
+                    className="h-full w-full"
+                    colors={["#D7F369", "#90AB8B", "#5E7F63"]}
+                    rotation={90}
+                    speed={0.15}
+                    scale={1.2}
+                    frequency={1}
+                    warpStrength={0.9}
+                    mouseInfluence={0.3}
+                    noise={0.05}
+                    parallax={0.2}
+                    iterations={2}
+                    intensity={1.4}
+                    bandWidth={5}
+                    transparent={false}
+                    autoRotate={5}
+                  />
+                </div>
+                {/* Minimal scrim, only where the date/time text sits, so the
+                    animation stays visible everywhere else in the band. */}
+                <div className="absolute inset-x-0 top-0 h-9 bg-gradient-to-b from-black/25 to-transparent" />
+                <div className="absolute top-2.5 inset-x-4 flex items-center justify-between text-[11px] font-medium text-white drop-shadow-sm">
+                  <span>{formattedDate}</span>
+                  <span>{formattedTime}</span>
+                </div>
               </div>
-              {/* Log out now lives in the sidebar's bottom utility row too —
-                  kept here as well since it's a conventional place to look
-                  for it, and removing it would be a behavior change beyond
-                  what was asked for. */}
+
+              {/* Solid content panel — everything functional lives on a
+                  fully opaque bg-surface, no blur/glass fighting for
+                  legibility. Avatar overlaps the seam between the two. */}
+              <div className="relative -mt-9 px-5 pb-5">
+                <div className="flex flex-col items-center">
+                  {profilePhoto ? (
+                    <img
+                      src={profilePhoto}
+                      alt={displayName}
+                      className="h-[72px] w-[72px] rounded-full object-cover border-4 border-surface shadow-md relative z-10"
+                    />
+                  ) : (
+                    <div className="h-[72px] w-[72px] rounded-full bg-accent text-accent-ink flex items-center justify-center text-2xl font-bold border-4 border-surface shadow-md relative z-10">
+                      {userInitial}
+                    </div>
+                  )}
+
+                  <div className="mt-3 text-base font-semibold text-ink text-center">{displayName}</div>
+                  <div className="mt-1 flex items-center gap-1.5 text-xs font-medium text-success-600">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-success-500" />
+                    Online
+                  </div>
+                </div>
+
+                <div className="flex gap-2 mt-4">
+                  <button
+                    className="flex-1 flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 bg-accent text-accent-ink text-sm font-semibold hover:opacity-90 transition"
+                    onClick={() => {
+                      setProfileOpen(false);
+                      requestAnimationFrame(() => {
+                        navigate(ROUTES.MY_PROFILE);
+                      });
+                    }}
+                    type="button"
+                  >
+                    <UserIcon className="h-3.5 w-3.5" />
+                    My Profile
+                  </button>
+                  <button
+                    className="flex-1 flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 bg-surface-2 text-ink text-sm font-semibold hover:bg-surface-2/70 transition"
+                    onClick={() => {
+                      if (userEmail) navigator.clipboard.writeText(userEmail);
+                    }}
+                    type="button"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    Copy Email
+                  </button>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-border text-center text-sm text-ink-muted">
+                  {userRole.replace(/_/g, ' ')} &bull; {parish?.name ?? 'LFC Church'}
+                </div>
+
+                <button
+                  className="mt-4 w-full flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-danger-600 hover:bg-danger-50 transition"
+                  onClick={() => {
+                    setProfileOpen(false);
+                    logout();
+                  }}
+                  type="button"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign Out
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -233,9 +342,30 @@ function Navbar({ onOpenSidebar }) {
 
 function Footer() {
   return (
-    <footer className="shrink-0 flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-border px-4 lg:px-6 py-3 text-xs text-ink-muted">
-      <p>© {new Date().getFullYear()} LFC Church Management System.</p>
-      <p>v1.0.0</p>
+    <footer className="shrink-0 border-t border-border px-4 lg:px-6 py-3 text-xs text-ink-muted bg-surface">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+        <p>© {new Date().getFullYear()} LFC Church Management System.</p>
+      </div>
+      <div className="flex flex-col sm:flex-row items-center justify-between mt-2 gap-2">
+        <span />
+        <div className="flex items-center gap-2 sm:justify-end w-full">
+          <span>
+            Developed by <span className="font-medium text-ink">Albin Mathew</span> <span className="text-ink-muted">(@albinmaniac)</span>
+          </span>
+          <a href="https://www.instagram.com/albinmaniac/" className="text-ink-muted hover:text-accent transition-colors" aria-label="Instagram" target="_blank" rel="noopener noreferrer">
+            <FaInstagram className="h-4 w-4" />
+          </a>
+          <a href="https://www.linkedin.com/in/albinmathew-0761-/" className="text-ink-muted hover:text-accent transition-colors" aria-label="LinkedIn" target="_blank" rel="noopener noreferrer">
+            <FaLinkedin className="h-4 w-4" />
+          </a>
+          <a href="https://www.facebook.com/albinmaniac/" className="text-ink-muted hover:text-accent transition-colors" aria-label="Facebook" target="_blank" rel="noopener noreferrer">
+            <FaFacebook className="h-4 w-4" />
+          </a>
+          <a href="mailto:albin07work@gmail.com" className="text-ink-muted hover:text-accent transition-colors" aria-label="Email" target="_blank" rel="noopener noreferrer">
+            <Mail className="h-4 w-4" />
+          </a>
+        </div>
+      </div>
     </footer>
   );
 }
@@ -266,27 +396,32 @@ export default function Layout() {
   });
   const [mobileOpen, setMobileOpen] = useState(false);
   const [theme, setTheme] = useState(getInitialTheme);
+  const [parish, setParish] = useState(null);
 
   const handleSetCollapsed = useCallback((next) => {
     setCollapsed(next);
     try {
       localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
     } catch {
-      // ignore storage errors (private browsing, quota, etc.) — collapse
-      // state just won't persist, not worth surfacing to the user
+      // ignore storage errors (private browsing, quota, etc.)
     }
   }, []);
 
-  // Applies/removes the `.dark` class that index.css's @custom-variant and
-  // CSS-variable theme tokens key off of, and persists the choice.
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     try {
       localStorage.setItem(THEME_KEY, theme);
     } catch {
-      // ignore storage errors — theme just won't persist across reloads
+      // ignore storage errors
     }
   }, [theme]);
+
+  useEffect(() => {
+    parishService
+      .getParishDetail()
+      .then((res) => setParish(res.data))
+      .catch(() => setParish(null));
+  }, []);
 
   const toggleTheme = useCallback(() => {
     setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
@@ -295,6 +430,7 @@ export default function Layout() {
   return (
     <div className="flex h-screen bg-bg">
       <Sidebar
+        parish={parish}
         collapsed={collapsed}
         setCollapsed={handleSetCollapsed}
         mobileOpen={mobileOpen}
@@ -303,7 +439,7 @@ export default function Layout() {
         toggleTheme={toggleTheme}
       />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <Navbar onOpenSidebar={() => setMobileOpen(true)} />
+        <Navbar onOpenSidebar={() => setMobileOpen(true)} parish={parish} />
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
           <Outlet />
         </main>

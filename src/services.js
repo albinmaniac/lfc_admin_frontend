@@ -13,17 +13,35 @@ export const accountsService = {
   /** POST /accounts/change-password/ — { current_password, new_password, confirm_password } */
   changePassword: (data) => api.post('/accounts/change-password/', data),
 
+  /** POST /accounts/forgot-password/ — { email } */
+  forgotPassword: (data) => api.post('/accounts/forgot-password/', data),
+
   /** POST /accounts/reset-password/ — { token, new_password, confirm_password } */
   resetPassword: (data) => api.post('/accounts/reset-password/', data),
 
   /** POST /accounts/accept-invitation/ — { token, password, confirm_password } */
   acceptInvitation: (data) => api.post('/accounts/accept-invitation/', data),
 
-  /** GET /accounts/users/ — list of users eligible for admin-triggered password reset. */
-  listPasswordResetUsers: () => api.get('/accounts/users/'),
+
+  /** GET /accounts/users/ — User Management list. */
+  listUsers: (params) => api.get('/accounts/users/', { params }),
+  
+  /** GET /accounts/password-reset/users/ — list of users eligible for admin-triggered password reset. */
+  listPasswordResetUsers: (params) => api.get("/accounts/password-reset/users/", { params }),
 
   /** POST /accounts/users/:userId/send-password-reset/ */
   sendPasswordReset: (userId) => api.post(`/accounts/users/${userId}/send-password-reset/`),
+
+  /** GET /accounts/user-management/users/:id/ */
+  getUser: (userId) => api.get(`/accounts/user-management/users/${userId}/`),
+
+  /** PATCH /accounts/user-management/users/:id/activate/ */
+  activateUser: (userId) =>
+    api.patch(`/accounts/user-management/users/${userId}/activate/`),
+
+  /** PATCH /accounts/user-management/users/:id/deactivate/ */
+  deactivateUser: (userId) =>
+    api.patch(`/accounts/user-management/users/${userId}/deactivate/`),
 };
 
 // ---------------------------------------------------------------------------
@@ -256,10 +274,17 @@ export const administrationService = {
   /** POST /staffs/:id/reactivate/ */
   reactivateStaff: (id) => api.post(`/staffs/${id}/reactivate/`),
 
+  // My Profile
+  /** GET /accounts/me/profile/ */
+  getMyProfile: () => api.get('/accounts/me/profile/'),
+
+  /** PATCH /accounts/me/profile/ */
+  updateMyProfile: (data) => api.patch('/accounts/me/profile/', data),
+
   // Invitations
   /** GET /accounts/invitations/ */
   getInvitations: (params) => api.get('/accounts/invitations/', { params }),
-  /** POST /accounts/invitations/ — { email, role }. */
+  /** POST /accounts/invitations/ — { full_name, email, role, permission_snapshot }. */
   createInvitation: (data) => api.post('/accounts/invitations/', data),
   /** DELETE /accounts/invitations/:id/ */
   deleteInvitation: (id) => api.delete(`/accounts/invitations/${id}/`),
@@ -270,11 +295,62 @@ export const administrationService = {
 };
 
 // ---------------------------------------------------------------------------
-// REPORTS — no backend endpoints exist yet, stubbed for future use
+// REPORTS
 // ---------------------------------------------------------------------------
 export const reportsService = {
-  /** No backend endpoint exists yet — throws until Reports has a real API. */
-  getSummary: () => {
-    throw new Error('reportsService.getSummary: backend endpoint not yet available');
-  },
+  /** GET /reports/dashboard/ — summary counts (families, members, units, groups, active_users, pending_invitations, events, notices). */
+  getDashboard: () => api.get('/reports/dashboard/'),
+
+  // Family Reports
+  /** GET /reports/families/directory/ — optional filter params (TBD once view is shared). */
+  getFamilyDirectory: (params, config) => api.get('/reports/families/directory/', { params, ...config }),
+  /** GET /reports/families/unit-wise/ */
+  getFamilyUnitReport: (params, config) => api.get('/reports/families/unit-wise/', { params, ...config }),
+  /** GET /reports/families/heads/ */
+  getFamilyHeadsReport: (params, config) => api.get('/reports/families/heads/', { params, ...config }),
+  /** GET /reports/families/members/ */
+  getFamilyMembersReport: (params, config) => api.get('/reports/families/members/', { params, ...config }),
+
+  // Group Reports
+  /** GET /reports/groups/directory/ */
+  getGroupDirectory: (params, config) => api.get('/reports/groups/directory/', { params, ...config }),
+  /** GET /reports/groups/members/ */
+  getGroupMembersReport: (params, config) => api.get('/reports/groups/members/', { params, ...config }),
+  /** GET /reports/groups/leaders/ */
+  getGroupLeadersReport: (params, config) => api.get('/reports/groups/leaders/', { params, ...config }),
+  /** GET /reports/groups/statistics/ */
+  getGroupStatisticsReport: (params, config) => api.get('/reports/groups/statistics/', { params, ...config }),
+
+  // Event & Notice Reports
+  /** GET /reports/events/ */
+  getEventReport: (params, config) => api.get('/reports/events/', { params, ...config }),
+  /** GET /reports/notices/ */
+  getNoticeReport: (params, config) => api.get('/reports/notices/', { params, ...config }),
+
+  // User & Security Reports
+  /** GET /reports/users/login-history/ */
+  getLoginHistoryReport: (params, config) => api.get('/reports/users/login-history/', { params, ...config }),
+  /** GET /reports/users/invitations/ */
+  getInvitationHistoryReport: (params, config) => api.get('/reports/users/invitations/', { params, ...config }),
+  /** GET /reports/users/recent/ */
+  getRecentUsersReport: (params, config) => api.get('/reports/users/recent/', { params, ...config }),
+  /** GET /reports/users/disabled/ */
+  getDisabledAccountsReport: (params, config) => api.get('/reports/users/disabled/', { params, ...config }),
+  /** GET /reports/users/sessions/ */
+  getActiveSessionsReport: (params, config) => api.get('/reports/users/sessions/', { params, ...config }),
+  /** GET /reports/users/permission-audit/ */
+  getPermissionAuditReport: (params, config) => api.get('/reports/users/permission-audit/', { params, ...config }),
+
+  // Staff Report
+  /** GET /reports/staff/ */
+  getStaffReport: (params, config) => api.get('/reports/staff/', { params, ...config }),
+
+  /**
+   * POST /reports/export/ — SUPERADMIN only.
+   * Exports reports and returns a downloadable file blob.
+   */
+  exportReport: (data) =>
+    api.post('/reports/export/', data, {
+      responseType: 'blob',
+    }),
 };

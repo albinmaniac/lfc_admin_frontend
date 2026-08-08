@@ -4,6 +4,8 @@ import { ROUTES, PERMISSIONS, ROLES } from './constants.js';
 import Layout from './Layout.jsx';
 
 import Login from './pages/Login.jsx';
+import ForgotPassword from './pages/ForgotPassword.jsx';
+import ResetPassword from './pages/ResetPassword.jsx';
 import AcceptInvitation from './pages/AcceptInvitation.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import MassTimings from './pages/MassTimings.jsx';
@@ -20,9 +22,13 @@ import Reports from './pages/Reports.jsx';
 import Security from './pages/Security.jsx';
 import StaffManagement from './pages/StaffManagement.jsx';
 import Invitations from './pages/Invitations.jsx';
+import MyProfile from './pages/MyProfile.jsx';
 import PermissionManagement from './pages/PermissionManagement.jsx';
 import ChurchSettings from './pages/ChurchSettings.jsx';
+import Users from "./pages/Users.jsx";
+import PasswordReset from "./pages/PasswordReset.jsx";
 import NotFound from './pages/NotFound.jsx';
+import UserManagement from './pages/UserManagement.jsx';
 
 const routeConfig = [
   { path: ROUTES.DASHBOARD, element: <Dashboard />, permission: PERMISSIONS.VIEW_DASHBOARD },
@@ -43,6 +49,7 @@ const routeConfig = [
   { path: ROUTES.SECURITY, element: <Security />, role: ROLES.SUPERADMIN },
   { path: ROUTES.STAFF_MANAGEMENT, element: <StaffManagement />, role: ROLES.SUPERADMIN },
   { path: ROUTES.INVITATIONS, element: <Invitations />, role: ROLES.SUPERADMIN },
+  { path: ROUTES.MY_PROFILE, element: <MyProfile /> },
   { path: ROUTES.PERMISSION_MANAGEMENT, element: <PermissionManagement />, role: ROLES.SUPERADMIN },
   { path: ROUTES.CHURCH_SETTINGS, element: <ChurchSettings />, role: ROLES.SUPERADMIN },
 ];
@@ -52,7 +59,10 @@ export default function AppRoutes() {
     <Routes>
       <Route path="/" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
       <Route path={ROUTES.LOGIN} element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password/:token" element={<ResetPassword />} />
       <Route path={ROUTES.ACCEPT_INVITATION} element={<AcceptInvitation />} />
+      
 
       <Route
         element={
@@ -72,6 +82,37 @@ export default function AppRoutes() {
             }
           />
         ))}
+        <Route
+          path={ROUTES.USER_MANAGEMENT}
+          element={
+            <ProtectedRoute role={ROLES.SUPERADMIN}>
+              <UserManagement />
+            </ProtectedRoute>
+          }
+        >
+          <Route
+            index
+            element={<Navigate to="users" replace />}
+          />
+
+          <Route
+            path="users"
+            element={
+              <ProtectedRoute role={ROLES.SUPERADMIN}>
+                <Users />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="password-reset"
+            element={
+              <ProtectedRoute role={ROLES.SUPERADMIN}>
+                <PasswordReset />
+              </ProtectedRoute>
+            }
+          />
+        </Route>
       </Route>
 
       <Route path="*" element={<NotFound />} />

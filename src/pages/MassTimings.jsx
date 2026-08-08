@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, X, Clock, Globe2, MessageSquare } from 'lucide-react';
+import {
+  Plus, Pencil, Trash2, X, Clock, Globe2, MessageSquare,
+} from 'lucide-react';
 import { parishService } from '../services.js';
 import { PageHeader, Badge, Switch, Button, Input, SummaryCard } from '../components.jsx';
 import { PermissionGate } from '../auth.jsx';
@@ -45,6 +47,7 @@ function formatTime12h(value) {
   return `${hour12}:${m} ${period}`;
 }
 
+
 function DetailRow({ label, value }) {
   return (
     <div className="flex items-start justify-between gap-3 text-sm">
@@ -53,6 +56,7 @@ function DetailRow({ label, value }) {
     </div>
   );
 }
+
 
 export default function MassTimings() {
   const [timings, setTimings] = useState([]);
@@ -85,6 +89,7 @@ export default function MassTimings() {
   useEffect(() => {
     fetchTimings();
   }, [fetchTimings]);
+
 
   const handleToggleActive = async (row, nextValue) => {
     setTimings((prev) => prev.map((t) => (t.id === row.id ? { ...t, is_active: nextValue } : t)));
@@ -386,6 +391,28 @@ export default function MassTimings() {
           </div>
         </div>
       )}
+
+      <section className="mt-8 rounded-2xl border border-border bg-surface p-4 shadow-sm sm:p-5">
+        <div className="mb-4">
+          <h2 className="text-base font-semibold text-ink">
+            Syro-Malabar HolyMass Music
+          </h2>
+          <p className="mt-1 text-sm text-ink-muted">
+            Listen to the Syro-Malabar HolyMass music collection while viewing the weekly Mass schedule.
+          </p>
+        </div>
+
+        <div className="overflow-hidden rounded-xl border border-border">
+          <iframe
+            data-testid="embed-iframe"
+            className="block h-[352px] w-full border-0"
+            src="https://open.spotify.com/embed/album/3BYqjOhLJ9DwgHGP2YfQHi?utm_source=generator&si=bff330d597a7484b"
+            title="Syro-Malabar HolyMass Music"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            loading="lazy"
+          />
+        </div>
+      </section>
     </div>
   );
 }

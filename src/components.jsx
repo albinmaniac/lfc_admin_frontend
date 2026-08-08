@@ -18,6 +18,18 @@ export function formatDate(isoString) {
   });
 }
 
+// Shared enum-label formatting — turns backend enum values like
+// PARISH_FEAST or MALE into readable text (Parish Feast, Male).
+// Use this instead of redefining the same split/capitalize logic per page.
+export function formatEnumLabel(value) {
+  if (!value) return '—';
+
+  return value
+    .split('_')
+    .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
 // ---------------------------------------------------------------------------
 // Button
 // ---------------------------------------------------------------------------
@@ -244,6 +256,113 @@ export function SummaryCard({ icon: Icon, title, value, description, trend, load
       <p className="text-sm text-ink-muted">{title}</p>
       <p className="text-4xl font-bold text-ink mt-1 tabular-nums tracking-tight">{value ?? '—'}</p>
       {description && <p className="text-xs text-ink-muted mt-1.5">{description}</p>}
+    </div>
+  );
+}
+// ==================== Reports ====================
+// Stat tiles reuse the existing SummaryCard (icon/title/value/trend/loading) —
+// no separate report stat-card component needed.
+
+// Proportional breakdown bars — e.g. dashboard record counts, category splits
+export function ReportBreakdown({ title, rows }) {
+  // rows: [{ key, label, value }]
+  const max = Math.max(...rows.map((r) => r.value || 0), 1);
+
+  return (
+    <div className="bg-surface border border-border rounded-2xl p-6">
+      <h3 className="text-base font-semibold text-ink mb-5">{title}</h3>
+      <div className="space-y-4">
+        {rows.map((row) => {
+          const pct = Math.round(((row.value || 0) / max) * 100);
+          return (
+            <div key={row.key}>
+              <div className="flex justify-between text-sm mb-1.5">
+                <span className="text-ink">{row.label}</span>
+                <span className="text-ink-muted tabular-nums">{row.value}</span>
+              </div>
+              <div className="h-2.5 rounded-full bg-surface-2 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-accent-strong transition-all duration-700"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Wraps the real DataTable with a report-specific toolbar: filters + export button
+export function ReportTable({
+  columns,
+  data,
+  loading,
+  filters,
+  onExport,
+  exportLoading,
+  emptyTitle,
+  emptyDescription,
+  getRowKey,
+}) {
+  return (
+    <div className="bg-surface border border-border rounded-2xl overflow-hidden">
+      {(filters || onExport) && (
+        <div className="flex flex-wrap items-center gap-3 p-4 border-b border-border">
+          {filters}
+          {onExport && (
+            <Button variant="secondary" size="sm" onClick={onExport} loading={exportLoading} className="ml-auto">
+              Export
+            </Button>
+          )}
+        </div>
+      )}
+      <DataTable
+        columns={columns}
+        data={data}
+        loading={loading}
+        emptyTitle={emptyTitle}
+        emptyDescription={emptyDescription}
+        getRowKey={getRowKey}
+      />
+    </div>
+  );
+}
+
+// Filter controls composed inside a ReportTable's toolbar
+export function ReportFilter({ type = 'search', label, value, onChange, options }) {
+  const fieldClass =
+    'h-9 rounded-xl border border-border bg-surface px-3 text-sm text-ink placeholder:text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-strong';
+
+  if (type === 'select') {
+    return (
+      <select value={value} onChange={(e) => onChange(e.target.value)} className={fieldClass}>
+        <option value="">{label}</option>
+        {options?.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  if (type === 'date') {
+    return <input type="date" value={value} onChange={(e) => onChange(e.target.value)} className={fieldClass} />;
+  }
+
+  return (
+    <input type="text" placeholder={label} value={value} onChange={(e) => onChange(e.target.value)} className={fieldClass} />
+  );
+}
+
+// For any report that returns real time-series data (none confirmed yet)
+export function ReportChart({ title, children }) {
+  return (
+    <div className="bg-surface border border-border rounded-2xl p-6">
+      <h3 className="text-base font-semibold text-ink mb-4">{title}</h3>
+      {children}
     </div>
   );
 }
