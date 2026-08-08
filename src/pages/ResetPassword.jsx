@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, NavLink, useParams } from 'react-router-dom'
 import { Church, ArrowLeft, CheckCircle2, Eye, EyeOff, KeyRound, Check, X } from 'lucide-react'
-import { Button } from '../components/ui/Button'
+import { Button } from "../components/ui/button";
 import { toast } from 'react-hot-toast'
 import { accountsService } from '../services'
 
