@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search, User as UserIcon, Shield, KeyRound, Crown, Briefcase, Users as UsersIcon, Home, X } from "lucide-react";
-import { Button } from "../components/ui/Button";
+import { Button } from "../components/ui/button";
 import { accountsService } from "../services";
 import { toast } from "react-hot-toast";
 
