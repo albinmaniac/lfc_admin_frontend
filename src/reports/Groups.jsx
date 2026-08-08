@@ -303,16 +303,13 @@ function StatCard({ icon: Icon, label, value, loading, delay }) {
 }
 
 function MembershipChart({ loading, rows }) {
-  // Give the chart enough height to breathe as group count grows, without
-  // letting a huge list blow the layout up — cap and let it scroll instead.
-  const chartHeight = Math.max(220, Math.min(rows.length * 40, 480));
-
+  // Compact, horizontally scrollable bar chart for group membership
   return (
     <div className="report-card rounded-2xl border border-border bg-surface p-4" style={{ animationDelay: '80ms' }}>
       <h3 className="text-sm font-semibold text-ink">Membership by group</h3>
       <p className="mt-0.5 text-xs text-ink-muted">Active parish groups ranked by member count</p>
 
-      <div className="mt-3 overflow-y-auto" style={{ maxHeight: 480 }}>
+      <div className="mt-3">
         {loading ? (
           <div className="flex flex-col gap-2 py-2">
             {[...Array(5)].map((_, i) => (
@@ -322,61 +319,70 @@ function MembershipChart({ loading, rows }) {
         ) : rows.length === 0 ? (
           <p className="py-8 text-center text-sm text-ink-muted">No group statistics found</p>
         ) : (
-          <div style={{ height: chartHeight, width: '100%' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={rows}
-                layout="vertical"
-                margin={{ top: 4, right: 24, left: 0, bottom: 4 }}
-                barCategoryGap="28%"
-              >
-                <CartesianGrid horizontal={false} stroke="var(--ui-border)" strokeDasharray="3 3" />
-                <XAxis
-                  type="number"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 11, fill: 'var(--ink-muted)' }}
-                  allowDecimals={false}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  tickLine={false}
-                  axisLine={false}
-                  width={130}
-                  tick={{ fontSize: 12, fill: 'var(--ink)' }}
-                />
-                <Tooltip
-                  cursor={{ fill: 'color-mix(in srgb, var(--ink) 6%, transparent)' }}
-                  content={({ active, payload }) => {
-                    if (!active || !payload?.length) return null;
-                    const item = payload[0].payload;
-                    return (
-                      <div
-                        style={{
-                          background: 'var(--surface)',
-                          border: '1px solid var(--ui-border)',
-                          borderRadius: 12,
-                          padding: '8px 12px',
-                          fontSize: 12,
-                          color: 'var(--ink)',
-                        }}
-                      >
-                        <div style={{ fontWeight: 600 }}>{item.name}</div>
-                        <div style={{ color: 'var(--ink-muted)' }}>
-                          {item.value} {item.value === 1 ? 'member' : 'members'}
+          <div className="overflow-x-auto pb-1">
+            <div
+              style={{
+                height: 250,
+                width: Math.max(520, rows.length * 88),
+                minWidth: '100%',
+              }}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={rows}
+                  margin={{ top: 8, right: 16, left: 0, bottom: 28 }}
+                  barCategoryGap="24%"
+                >
+                  <CartesianGrid vertical={false} stroke="var(--ui-border)" strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="name"
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                    tick={{ fontSize: 11, fill: 'var(--ink-muted)' }}
+                    angle={-35}
+                    textAnchor="end"
+                    height={52}
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    tickLine={false}
+                    axisLine={false}
+                    width={28}
+                    tick={{ fontSize: 11, fill: 'var(--ink-muted)' }}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'color-mix(in srgb, var(--ink) 6%, transparent)' }}
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const item = payload[0].payload;
+                      return (
+                        <div
+                          style={{
+                            background: 'var(--surface)',
+                            border: '1px solid var(--ui-border)',
+                            borderRadius: 12,
+                            padding: '8px 12px',
+                            fontSize: 12,
+                            color: 'var(--ink)',
+                          }}
+                        >
+                          <div style={{ fontWeight: 600 }}>{item.name}</div>
+                          <div style={{ color: 'var(--ink-muted)' }}>
+                            {item.value} {item.value === 1 ? 'member' : 'members'}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  }}
-                />
-                <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={22}>
-                  {rows.map((d, i) => (
-                    <Cell key={d.key} fill={BAR_COLORS[i % BAR_COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+                      );
+                    }}
+                  />
+                  <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={32}>
+                    {rows.map((d, i) => (
+                      <Cell key={d.key} fill={BAR_COLORS[i % BAR_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         )}
       </div>
